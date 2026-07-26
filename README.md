@@ -61,8 +61,13 @@ chat, Bulbul v3 TTS) · Tailwind CDN.
 
 ```bash
 bun install
-bun run web                   # Iteration 0 — scripted interview + live checklist
+bun run web
 ```
+
+- `http://localhost:3000/` — landing page: the problem, the claim nobody files, a
+  real register excerpt
+- `http://localhost:3000/app` — the interview and live register
+- `http://localhost:3000/app?demo=ready` — jump to the finished state (for demos)
 
 Iteration 1 adds Sarvam voice and secondary text chat. At that point, copy
 `.env.example` to `.env` and set the key in the Convex deployment:

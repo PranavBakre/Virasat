@@ -125,7 +125,7 @@ Someone may be using this within a week of a death.
 
 ```bash
 bun install
-bun run web           # Iteration 0 — scripted interview + live checklist
+bun run web           # / = landing · /app = interview · /app?demo=ready = finished state
 bun run dev           # Iteration 1 Convex backend
 bun run typecheck
 bun test

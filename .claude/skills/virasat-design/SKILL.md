@@ -9,8 +9,38 @@ description: The virasat visual language — a ruled register on paper stock, in
 dark-theme SaaS system for gx-client-next. Do not load it, do not use its
 tokens, do not use the baseline-font unit system here.
 
-Live implementation: `web/index.html` (tokens + print styles) and `web/app.js`
-(the register). When this file and the code disagree, fix the code.
+Live implementation: `web/tokens.js` (the shared token config — **edit colours and
+faces here, not in a page**), `web/landing.html`, `web/index.html`, and
+`web/app.js`. When this file and the code disagree, fix the code.
+
+Routes: `/` is the landing page, `/app` is the interview.
+
+## The landing page
+
+Inverse of the app. The app is speech becoming record; the landing page makes you
+feel the **absence** of the record, then shows the register as the answer.
+
+- **The loose slips** are the signature device: six institution demands as
+  `bg-sheet` fragments on the `paper` ground, each rotated 0.6–1.6° via a static
+  `.slip-*` class. These are the actual pieces of paper a family is handed, lying
+  where they fall. Static transforms, not animation — `building.md` still bans
+  animation. This is the one place the page leaves the grid; everywhere else is
+  strict hairline alignment.
+- **Every slip is sourced.** The demands come from the rules table (Annex I-B/C/D/E
+  from S1, Forms 20/10D/5IF from S4), not from invention. Do not add a slip for a
+  requirement that has no row.
+- **EDLI gets its own band**, and it is where `terra` is spent. It is the single
+  most persuasive fact the product has.
+- **The register excerpt is styled identically to the real app**, and elides rows
+  02–03 with an explicit `⋯` row. Without the elision the 01 → 04 jump reads as a
+  rendering bug.
+- **The honesty tags are persuasion, not hedging.** "Cover amount pending
+  verification" next to the EDLI figure, and `Unverified` inside the excerpt,
+  make the page more credible rather than less.
+- **Never make a claim a later iteration will falsify.** An early draft said
+  "nothing you say is stored beyond the session" — true in Iteration 0, false once
+  Convex sessions land in Iteration 1. It now reads "No account, no sign-in."
+  A false privacy claim about data concerning a death is worse than no claim.
 
 ## Who is looking at this
 
