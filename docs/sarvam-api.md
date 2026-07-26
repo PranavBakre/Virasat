@@ -26,6 +26,42 @@ Iteration 1 uses `client.speechToTextStreaming.connect()` from the official
 resamples it to 16 kHz, encodes PCM16, and sends binary chunks to Bun. Bun alone
 opens the Sarvam socket, pinned to `kn-IN`, `hi-IN`, or `en-IN`.
 
+## Streaming speech-to-text (what the interview actually uses)
+
+`client.speechToTextStreaming.connect(...)`. Two separate places declare the
+audio format, and they do **not** take the same vocabulary:
+
+| Where | Field | Value | Note |
+|---|---|---|---|
+| `connect()` | `input_audio_codec` | `pcm_s16le` | the real codec |
+| `connect()` | `sample_rate` | `"16000"` | string here |
+| `transcribe()` per frame | `encoding` | **`audio/wav`** | the only accepted value |
+| `transcribe()` per frame | `sample_rate` | `16000` | number here |
+
+`encoding: "audio/wav"` is a declared container, not an instruction to prepend a
+RIFF header. The frames stay raw PCM16 — `input_audio_codec` is what actually
+describes them. Sending the truthful-looking `pcm_s16le` fails Pydantic
+validation server-side, and **Sarvam then closes the socket with code 1000**.
+
+> A clean 1000 close looks exactly like an idle timeout. The only thing that
+> distinguishes them is the in-band `{"type":"error"}` message Sarvam sends
+> first — so the message handler must surface `type: "error"`, not just
+> `type: "data"`. Filtering it out turns every protocol error into a phantom
+> "connection keeps dropping".
+
+Also worth knowing:
+
+- The streaming socket has **no `mode` param**. `codemix` / `translate` /
+  `verbatim` are REST-only, and `model` types as `saaras:v2.5` alone.
+- `vad_signals: "true"` yields `START_SPEECH` / `END_SPEECH` events, and a
+  transcript arrives on VAD segmentation without an explicit `flush()`.
+- One socket survives `flush()` and serves an entire interview — it does not
+  need reopening per utterance.
+- Measured on a 2.9 s clip: `START_SPEECH` 373 ms, `END_SPEECH` 1619 ms,
+  transcript 1830 ms.
+- Bun needs `socket.socket.binaryType = "arraybuffer"`; the SDK defaults to the
+  browser's `blob`, which Bun's WebSocket rejects.
+
 ## REST speech-to-text (fallback reference)
 
 ```
