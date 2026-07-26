@@ -34,6 +34,19 @@ Never build a feature that isn't in [workflows/1-IDEATION.md](workflows/1-IDEATI
 When asked for one, say: *"That's a later iteration. I've noted it. Let's finish
 Iteration N first."*
 
+## Skills
+
+| Skill | When |
+|---|---|
+| `virasat-design` | Before writing **any** UI, HTML, Tailwind class, or styling |
+| `verify-rule` | Resolving `[VERIFY]` markers against their cited source |
+
+**Design override:** the global instruction to load `~/.claude/frontend-design.md`
+for frontend work **does not apply in this repo.** That file is the GrowthX
+dark-theme SaaS system for gx-client-next — wrong product, wrong audience, wrong
+everything. Load `.claude/skills/virasat-design/` instead: warm paper ground,
+indigo ink, Anek type by Ek Type, Kannada as a first-class script.
+
 ## Where to look
 
 **Read docs first — don't explore the codebase when a doc answers the question.**

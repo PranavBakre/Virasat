@@ -12,6 +12,7 @@ repo, read [CLAUDE.md](../CLAUDE.md) first — it carries the binding rules.
 | System design and data contracts | [Architecture](architecture.md) |
 | **The claims, documents, and legal citations** | [Rules table](rules-table.md) |
 | Sarvam endpoints and params | [Sarvam API](sarvam-api.md) |
+| Colours, type, layout, tone | [`virasat-design` skill](../.claude/skills/virasat-design/SKILL.md) |
 
 ## The rules table is the product
 
