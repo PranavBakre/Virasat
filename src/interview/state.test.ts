@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { applyQuestionAnswer, nextQuestion } from "./state.ts";
+import {
+  applyAnswerToCurrentQuestion,
+  applyQuestionAnswer,
+  nextQuestion,
+} from "./state.ts";
 import { questionById } from "./questions.ts";
 import type { EstateProfile } from "../rules/types.ts";
 
@@ -105,5 +109,27 @@ describe("question routing", () => {
       "yes",
     );
     expect(nextQuestion(insured)?.id).toBe("insurance-nominee-claimant");
+  });
+
+  test("commits an async answer onto the latest profile without losing evidence", () => {
+    const latest: EstateProfile = {
+      deathCertificate: "yes",
+      documents: { "death-certificate": "yes" },
+    };
+
+    expect(applyAnswerToCurrentQuestion(latest, "religion", "hindu")).toEqual({
+      deathCertificate: "yes",
+      religion: "hindu",
+      documents: { "death-certificate": "yes" },
+    });
+  });
+
+  test("rejects an async answer when concurrent evidence changed the question", () => {
+    const latest: EstateProfile = {
+      deathCertificate: "yes",
+      documents: { "death-certificate": "yes" },
+    };
+
+    expect(applyAnswerToCurrentQuestion(latest, "death-certificate", "no")).toBeNull();
   });
 });

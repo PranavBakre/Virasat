@@ -15,7 +15,10 @@ let state = {
   estateId: null,
   documentStore: {
     documents: [],
-    estateMap: { groups: [], missingDocuments: [], organizedDocuments: 0, reviewDocuments: 0 },
+    estateMap: {
+      groups: [], requiredDocuments: [], missingDocuments: [],
+      organizedDocuments: 0, reviewDocuments: 0,
+    },
   },
 };
 let socket;
@@ -320,9 +323,14 @@ function renderConversation() {
 
 function renderDocuments() {
   const panel = document.querySelector("#document-panel");
-  const store = state.documentStore ?? { documents: [], estateMap: { missingDocuments: [] } };
+  const store = state.documentStore ?? {
+    documents: [],
+    estateMap: { requiredDocuments: [], missingDocuments: [] },
+  };
   const files = store.documents ?? [];
-  const missing = store.estateMap?.missingDocuments ?? [];
+  const requirements = store.estateMap?.requiredDocuments
+    ?? store.estateMap?.missingDocuments
+    ?? [];
   panel.classList.remove("hidden");
   panel.innerHTML = `<div class="border-t border-rule pt-5">
     <div class="flex items-baseline justify-between gap-4">
@@ -356,16 +364,20 @@ function renderDocuments() {
         ${file.error ? `<p class="mt-1 text-[13px] text-ochreInk">${text(file.error)}</p>` : ""}
       </article>`).join("")}
     </div>` : ""}
-    ${missing.length ? `<div class="mt-5">
-      <h4 class="text-[14px] font-medium text-ink">Documents still needed</h4>
-      <p class="mt-1 text-[13px] text-ink2">Absent and unconfirmed are kept separate.</p>
-      ${missing.map((document) => `<label class="flex items-start gap-3 border-b border-ruleSoft py-[9px]">
+    ${requirements.length ? `<div class="mt-5">
+      <h4 class="text-[14px] font-medium text-ink">Claim documents</h4>
+      <p class="mt-1 text-[13px] text-ink2">Keep every item accurate. You can correct documents marked in hand.</p>
+      ${requirements.map((document) => `<label class="flex items-start gap-3 border-b border-ruleSoft py-[9px]">
         <input class="mt-1 h-[15px] w-[15px] accent-indigo" type="checkbox"
           data-document-id="${text(document.id)}" ${document.have === "yes" ? "checked" : ""}>
         <span class="min-w-0">
           <span class="block text-[15px]">${text(document.label)}</span>
           <span class="block text-[13px] ${document.have === "no" ? "text-ochreInk" : "text-ink2"}">${
-            document.have === "no" ? "Still to get" : "Not yet confirmed"
+            document.have === "yes"
+              ? "In hand"
+              : document.have === "no"
+                ? "Still to get"
+                : "Not yet confirmed"
           } · needed for ${document.neededFor.length} ${document.neededFor.length === 1 ? "claim" : "claims"}</span>
         </span>
       </label>`).join("")}

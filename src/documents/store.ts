@@ -87,6 +87,22 @@ export function addStoredDocument(
   workspace.documents.unshift(document);
 }
 
+export function clearStoredDocumentMatch(
+  workspace: EstateWorkspace,
+  documentId: string,
+): void {
+  for (const document of workspace.documents) {
+    if (document.status !== "organized"
+      || !document.matchedDocumentIds.includes(documentId)) continue;
+    document.matchedDocumentIds = document.matchedDocumentIds.filter((id) => id !== documentId);
+    if (!document.matchedDocumentIds.length) {
+      document.status = "needs-review";
+      document.confidence = Math.min(document.confidence, 0.74);
+      document.error = "Automatic match removed. Confirm this document manually if needed.";
+    }
+  }
+}
+
 export function applyDocumentMatches(
   profile: EstateProfile,
   document: StoredDocument,

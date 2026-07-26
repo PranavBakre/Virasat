@@ -4,6 +4,69 @@ const BASE_URL = "https://api.sarvam.ai/doc-digitization/job/v1";
 const TERMINAL_STATES = new Set(["Completed", "PartiallyCompleted", "Failed"]);
 
 type ApiObject = Record<string, unknown>;
+type FetchInput = Parameters<typeof fetch>[0];
+type Fetcher = (input: FetchInput, init?: RequestInit) => Promise<Response>;
+
+type RateLimitedRequesterOptions = {
+  fetcher?: Fetcher;
+  sleep?: (milliseconds: number) => Promise<void>;
+  now?: () => number;
+  intervalMs?: number;
+  maxRetries?: number;
+};
+
+function retryAfterMs(response: Response, now: number): number {
+  const value = response.headers.get("retry-after");
+  if (!value) return 0;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1_000);
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.max(0, date - now) : 0;
+}
+
+export function createRateLimitedRequester(
+  options: RateLimitedRequesterOptions = {},
+): (input: FetchInput, init?: RequestInit) => Promise<Response> {
+  const fetcher: Fetcher = options.fetcher ?? ((input, init) => fetch(input, init));
+  const sleep = options.sleep
+    ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const now = options.now ?? Date.now;
+  const intervalMs = options.intervalMs ?? 6_100;
+  const maxRetries = options.maxRetries ?? 3;
+  let nextAllowedAt = 0;
+  let tail = Promise.resolve();
+
+  return async (input, init) => {
+    const previous = tail;
+    let release = () => {};
+    tail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+
+    try {
+      for (let attempt = 0; ; attempt += 1) {
+        const wait = Math.max(0, nextAllowedAt - now());
+        if (wait) await sleep(wait);
+        nextAllowedAt = now() + intervalMs;
+
+        const response = await fetcher(input, init);
+        if ((response.status !== 429 && response.status !== 503)
+          || attempt >= maxRetries) return response;
+
+        const backoff = Math.max(
+          retryAfterMs(response, now()),
+          Math.min(60_000, 1_000 * (2 ** attempt)),
+        );
+        nextAllowedAt = Math.max(nextAllowedAt, now() + backoff);
+      }
+    } finally {
+      release();
+    }
+  };
+}
+
+const sarvamRequest = createRateLimitedRequester();
 
 function headers(apiKey: string): HeadersInit {
   return {
@@ -17,7 +80,7 @@ async function apiJson(
   apiKey: string,
   init: RequestInit,
 ): Promise<ApiObject> {
-  const response = await fetch(url, init);
+  const response = await sarvamRequest(url, init);
   if (!response.ok) {
     throw new Error(`Document parsing failed (${response.status}): ${await response.text()}`);
   }

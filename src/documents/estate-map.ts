@@ -21,7 +21,7 @@ export function buildEstateMap(
   documents: StoredDocument[],
 ): EstateMap {
   const grouped = new Map<string, EstateMapGroup>();
-  const missing = new Map<string, EstateMap["missingDocuments"][number]>();
+  const requirements = new Map<string, EstateMap["requiredDocuments"][number]>();
 
   for (const claim of claimSet.claims) {
     const group = groupFor(claim);
@@ -42,8 +42,7 @@ export function buildEstateMap(
     grouped.set(group.id, existing);
 
     for (const document of uniqueDocs.values()) {
-      if (document.have === "yes") continue;
-      const item = missing.get(document.id) ?? {
+      const item = requirements.get(document.id) ?? {
         id: document.id,
         label: document.label,
         have: document.have,
@@ -52,16 +51,18 @@ export function buildEstateMap(
       };
       if (!item.neededFor.includes(claim.title)) item.neededFor.push(claim.title);
       if (document.have === "no") item.have = "no";
-      missing.set(document.id, item);
+      requirements.set(document.id, item);
     }
   }
 
+  const requiredDocuments = [...requirements.values()].sort((left, right) => {
+    const order = { no: 0, unknown: 1, yes: 2 };
+    return order[left.have] - order[right.have] || left.label.localeCompare(right.label);
+  });
   return {
     groups: [...grouped.values()],
-    missingDocuments: [...missing.values()].sort((left, right) => {
-      if (left.have !== right.have) return left.have === "no" ? -1 : 1;
-      return left.label.localeCompare(right.label);
-    }),
+    requiredDocuments,
+    missingDocuments: requiredDocuments.filter((document) => document.have !== "yes"),
     organizedDocuments: documents.filter((document) => document.status === "organized").length,
     reviewDocuments: documents.filter((document) => document.status === "needs-review").length,
   };

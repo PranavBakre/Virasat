@@ -30,7 +30,7 @@ export type EstateWorkspace = {
   updatedAt: string;
 };
 
-export type MissingDocument = {
+export type EstateDocumentRequirement = {
   id: string;
   label: string;
   have: YesNoUnknown;
@@ -50,7 +50,8 @@ export type EstateMapGroup = {
 
 export type EstateMap = {
   groups: EstateMapGroup[];
-  missingDocuments: MissingDocument[];
+  requiredDocuments: EstateDocumentRequirement[];
+  missingDocuments: EstateDocumentRequirement[];
   organizedDocuments: number;
   reviewDocuments: number;
 };

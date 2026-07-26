@@ -24,3 +24,13 @@ export function applyQuestionAnswer(
   // Each question owns its patch, so one turn cannot write volunteered fields.
   return { ...profile, ...question.patch(normalized, profile) };
 }
+
+export function applyAnswerToCurrentQuestion(
+  profile: EstateProfile,
+  questionId: string,
+  value: string,
+): EstateProfile | null {
+  const current = nextQuestion(profile);
+  if (!current || current.id !== questionId) return null;
+  return applyQuestionAnswer(profile, current, value);
+}

@@ -10,13 +10,17 @@ import {
 import {
   addStoredDocument,
   applyDocumentMatches,
+  clearStoredDocumentMatch,
   isEstateId,
   loadWorkspace,
   saveProfile,
   saveWorkspace,
 } from "../src/documents/store.ts";
 import type { EstateWorkspace } from "../src/documents/types.ts";
-import { applyQuestionAnswer, nextQuestion } from "../src/interview/state.ts";
+import {
+  applyAnswerToCurrentQuestion,
+  nextQuestion,
+} from "../src/interview/state.ts";
 import { extractAnswer } from "../src/interview/extract.ts";
 import type { QuestionCopy } from "../src/interview/questions.ts";
 import { parseClientMessage, type ServerMessage } from "../src/interview/protocol.ts";
@@ -250,9 +254,25 @@ async function applyTranscript(
       send(ws, { type: "unclear", questionId });
       return;
     }
-    ws.data.profile = applyQuestionAnswer(ws.data.profile, question, result.value);
+    const latestProfile = ws.data.workspace.profile;
+    const updatedProfile = applyAnswerToCurrentQuestion(
+      latestProfile,
+      questionId,
+      result.value,
+    );
+    if (!updatedProfile) {
+      ws.data.profile = latestProfile;
+      send(ws, {
+        type: "error",
+        code: "stale_question",
+        message: "The question changed while documents were being organized.",
+      });
+      sendState(ws);
+      return;
+    }
+    ws.data.profile = updatedProfile;
     ws.data.workspace.profile = ws.data.profile;
-    void saveProfile(ws.data.workspace, ws.data.profile);
+    await saveProfile(ws.data.workspace, ws.data.profile);
     ws.data.transcript.push({
       questionId,
       label: question.label,
@@ -364,9 +384,10 @@ const server = Bun.serve<Session>({
         );
       }
 
-      const processed = await Promise.all(
-        files.map((file) => processDocument(estateId, file, sarvamApiKey, language)),
-      );
+      const processed = [];
+      for (const file of files) {
+        processed.push(await processDocument(estateId, file, sarvamApiKey, language));
+      }
       for (const document of processed) {
         addStoredDocument(workspace, document);
         workspace.profile = applyDocumentMatches(workspace.profile, document);
@@ -466,6 +487,9 @@ const server = Bun.serve<Session>({
           send(ws, { type: "error", code: "unknown_document", message: "Unknown document." });
           return;
         }
+        if (message.status !== "yes") {
+          clearStoredDocumentMatch(ws.data.workspace, message.documentId);
+        }
         ws.data.profile = {
           ...ws.data.profile,
           documents: {
@@ -474,7 +498,7 @@ const server = Bun.serve<Session>({
           },
         };
         ws.data.workspace.profile = ws.data.profile;
-        void saveProfile(ws.data.workspace, ws.data.profile);
+        await saveProfile(ws.data.workspace, ws.data.profile);
         sendState(ws);
       } else if (message.type === "reset") {
         closeTranscription(ws.data.sarvamStt);
