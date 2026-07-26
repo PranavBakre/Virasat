@@ -7,8 +7,11 @@
   "scripts": {
     "dev": "bun run --hot web/serve.ts",
     "web": "bun run --hot web/serve.ts",
+    "dev:worker": "wrangler dev",
+    "deploy:worker": "wrangler deploy",
     "convex": "bunx convex dev",
     "typecheck": "tsc --noEmit",
+    "typecheck:worker": "tsc --project worker/tsconfig.json",
     "test": "bun test"
   },
   "dependencies": {
@@ -17,7 +20,9 @@
     "sarvamai": "^1.1.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260726.1",
     "@types/bun": "latest",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "wrangler": "^4.114.0"
   }
 }
