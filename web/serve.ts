@@ -1,5 +1,21 @@
 import { deriveClaims } from "../src/rules/engine.ts";
 import type { EstateProfile } from "../src/rules/types.ts";
+import { buildEstateMap } from "../src/documents/estate-map.ts";
+import {
+  MAX_DOCUMENT_SIZE,
+  MAX_DOCUMENTS_PER_UPLOAD,
+  isSupportedDocument,
+  processDocument,
+} from "../src/documents/process.ts";
+import {
+  addStoredDocument,
+  applyDocumentMatches,
+  isEstateId,
+  loadWorkspace,
+  saveProfile,
+  saveWorkspace,
+} from "../src/documents/store.ts";
+import type { EstateWorkspace } from "../src/documents/types.ts";
 import { applyQuestionAnswer, nextQuestion } from "../src/interview/state.ts";
 import { extractAnswer } from "../src/interview/extract.ts";
 import type { QuestionCopy } from "../src/interview/questions.ts";
@@ -25,7 +41,11 @@ import {
   type SttSocket,
 } from "../src/sarvam/stt.ts";
 import { streamSpeech as streamSarvamSpeech } from "../src/sarvam/tts.ts";
-import type { InterviewLanguage, VoiceProvider } from "../src/voice/config.ts";
+import {
+  isInterviewLanguage,
+  type InterviewLanguage,
+  type VoiceProvider,
+} from "../src/voice/config.ts";
 
 type TranscriptEntry = {
   questionId: string;
@@ -34,6 +54,7 @@ type TranscriptEntry = {
   answer: string;
 };
 type Session = {
+  workspace: EstateWorkspace;
   profile: EstateProfile;
   language: InterviewLanguage;
   provider: VoiceProvider;
@@ -76,13 +97,25 @@ function defaultProvider(): VoiceProvider {
   return "sarvam";
 }
 
+const workspaces = new Map<string, EstateWorkspace>();
+
+async function workspaceFor(estateId: string): Promise<EstateWorkspace> {
+  const existing = workspaces.get(estateId);
+  if (existing) return existing;
+  const workspace = await loadWorkspace(estateId);
+  workspaces.set(estateId, workspace);
+  return workspace;
+}
+
 function initialSession(
+  workspace: EstateWorkspace,
   language: InterviewLanguage = "en-IN",
   generation = 0,
   provider: VoiceProvider = defaultProvider(),
 ): Session {
   return {
-    profile: {},
+    workspace,
+    profile: workspace.profile,
     language,
     provider,
     transcript: [],
@@ -104,11 +137,17 @@ function send(ws: Bun.ServerWebSocket<Session>, message: ServerMessage): void {
 
 function sendState(ws: Bun.ServerWebSocket<Session>): void {
   const question = nextQuestion(ws.data.profile);
+  const claimSet = deriveClaims(ws.data.profile);
   send(ws, {
     type: "state",
     payload: {
+      estateId: ws.data.workspace.id,
       profile: ws.data.profile,
-      claimSet: deriveClaims(ws.data.profile),
+      claimSet,
+      documentStore: {
+        documents: ws.data.workspace.documents,
+        estateMap: buildEstateMap(claimSet, ws.data.workspace.documents),
+      },
       transcript: ws.data.transcript,
       language: ws.data.language,
       provider: ws.data.provider,
@@ -212,6 +251,8 @@ async function applyTranscript(
       return;
     }
     ws.data.profile = applyQuestionAnswer(ws.data.profile, question, result.value);
+    ws.data.workspace.profile = ws.data.profile;
+    void saveProfile(ws.data.workspace, ws.data.profile);
     ws.data.transcript.push({
       questionId,
       label: question.label,
@@ -283,9 +324,63 @@ const server = Bun.serve<Session>({
       if (origin && new URL(origin).host !== url.host) {
         return new Response("Forbidden", { status: 403 });
       }
-      return server.upgrade(request, { data: initialSession() })
-        ? undefined
-        : new Response("WebSocket upgrade failed", { status: 400 });
+      const estateId = url.searchParams.get("estate");
+      if (!isEstateId(estateId)) {
+        return new Response("Invalid estate id", { status: 400 });
+      }
+      const workspace = await workspaceFor(estateId);
+      return server.upgrade(request, { data: initialSession(workspace) })
+        ? undefined : new Response("WebSocket upgrade failed", { status: 400 });
+    }
+    if (url.pathname === "/api/documents" && request.method === "POST") {
+      const origin = request.headers.get("origin");
+      if (origin && new URL(origin).host !== url.host) {
+        return new Response("Forbidden", { status: 403 });
+      }
+      const estateId = url.searchParams.get("estate");
+      if (!isEstateId(estateId)) {
+        return Response.json({ error: "Invalid estate id" }, { status: 400 });
+      }
+      const workspace = await workspaceFor(estateId);
+      const form = await request.formData();
+      const languageValue = form.get("language");
+      const language = typeof languageValue === "string" && isInterviewLanguage(languageValue)
+        ? languageValue
+        : "en-IN";
+      const files = form.getAll("documents").filter((value): value is File => value instanceof File);
+      if (!files.length || files.length > MAX_DOCUMENTS_PER_UPLOAD) {
+        return Response.json(
+          { error: `Choose between 1 and ${MAX_DOCUMENTS_PER_UPLOAD} documents.` },
+          { status: 400 },
+        );
+      }
+      const invalid = files.find((file) =>
+        file.size === 0 || file.size > MAX_DOCUMENT_SIZE || !isSupportedDocument(file)
+      );
+      if (invalid) {
+        return Response.json(
+          { error: `${invalid.name} must be a PDF, image, or text file under 20 MB.` },
+          { status: 400 },
+        );
+      }
+
+      const processed = await Promise.all(
+        files.map((file) => processDocument(estateId, file, sarvamApiKey, language)),
+      );
+      for (const document of processed) {
+        addStoredDocument(workspace, document);
+        workspace.profile = applyDocumentMatches(workspace.profile, document);
+      }
+      await saveWorkspace(workspace);
+      const claimSet = deriveClaims(workspace.profile);
+      return Response.json({
+        profile: workspace.profile,
+        claimSet,
+        documentStore: {
+          documents: workspace.documents,
+          estateMap: buildEstateMap(claimSet, workspace.documents),
+        },
+      });
     }
     if (url.pathname === "/app.js") {
       return new Response(app, { headers: { "Content-Type": "text/javascript" } });
@@ -345,7 +440,9 @@ const server = Bun.serve<Session>({
         send(ws, { type: "error", code: "invalid_message", message: "Invalid message." });
         return;
       }
-
+      // HTTP document uploads and the interview share one workspace object.
+      // Rejoin the latest profile before applying the next socket mutation.
+      ws.data.profile = ws.data.workspace.profile;
       if (message.type === "start" || message.type === "set_language") {
         ws.data.language = message.language;
         sendState(ws);
@@ -376,14 +473,18 @@ const server = Bun.serve<Session>({
             [message.documentId]: message.status,
           },
         };
+        ws.data.workspace.profile = ws.data.profile;
+        void saveProfile(ws.data.workspace, ws.data.profile);
         sendState(ws);
       } else if (message.type === "reset") {
         closeTranscription(ws.data.sarvamStt);
-        ws.data = initialSession(
-          ws.data.language,
-          ws.data.generation + 1,
-          ws.data.provider,
+        const { workspace, language, generation, provider } = ws.data;
+        workspace.profile = workspace.documents.reduce<EstateProfile>(
+          (profile, document) => applyDocumentMatches(profile, document),
+          {},
         );
+        void saveWorkspace(workspace);
+        ws.data = initialSession(workspace, language, generation + 1, provider);
         sendState(ws);
         if (ws.data.provider === "sarvam") void ensureSarvamStream(ws);
       } else if (message.type === "stt_start") {
