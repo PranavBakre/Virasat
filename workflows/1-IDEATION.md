@@ -31,16 +31,17 @@ bureaucracy is the person who has to do all of it.
 
 **What would make them say "finally, someone built this"?**
 Talking, in their own language, for five minutes — and getting back a complete,
-printable list of every claim their family can make, with the exact forms and
-the exact documents still missing.
+printable list of every identified claim within virasat's Karnataka
+movable-assets scope, with the exact forms and the exact documents still
+missing.
 
 ---
 
 ## 2. Iteration 0 — the magic moment
 
 > **One sentence:** Run a script with a hardcoded family situation and it prints
-> every claim that family can file, where to file it, and which documents they
-> are still missing.
+> every identified claim in virasat's current scope, where to file it, and which
+> documents they are still missing.
 
 - No UI. Terminal only. `bun run core.ts`.
 - No voice yet — the interview answers are a hardcoded object in the file.
@@ -133,7 +134,7 @@ Sarvam call is written. The demo is the checklist; voice is how you get there.
 |---|---|
 | 0:00–0:30 | **The problem.** Someone dies. The family owes nobody anything, but seven institutions owe *them* — and no one hands over that list. Claims get abandoned. |
 | 0:30–1:00 | **Today's workflow.** Show the actual document lists: bank, LIC, EPFO Form 20/10D/5IF, pension office. Four different counters, four different answers, discovered one rejection at a time. |
-| 1:00–3:00 | **Live demo.** Speak to it in Kannada. Five questions. The checklist fills in as you answer. End on the screen showing every claim, every form, and the two documents still missing. |
+| 1:00–3:00 | **Live demo.** Speak to it in Kannada. The conditional checklist fills in as answers land. Tick the documents on hand, then end on every in-scope claim, every form, and the two documents still missing. |
 
 **The moment to land:** the instant a claim the person *didn't know existed*
 appears on screen — EDLI insurance is the reliable one; almost nobody knows EPFO

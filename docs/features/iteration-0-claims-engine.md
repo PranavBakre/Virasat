@@ -6,8 +6,9 @@
 
 ## What it does
 
-`bun run core.ts` reads a hardcoded `EstateProfile`, derives every claim that
-family can file, and prints the checklist to the terminal.
+`bun run core.ts` reads a hardcoded `EstateProfile`, derives every identified
+claim within virasat's Karnataka movable-assets scope, and prints the checklist
+to the terminal.
 
 No UI. No Sarvam. No network. This is the magic moment with the packaging
 removed.
@@ -61,16 +62,34 @@ and an all-`unknown` profile prints nothing interesting.
 
 ```ts
 const profile: EstateProfile = {
-  deathCertificate: true,
+  deathCertificate: "yes",
   religion: "hindu",
   will: "no",
   state: "karnataka",
+  district: "Bengaluru Urban",
   relationship: "spouse",
   survivingHeirs: ["widow", "son", "daughter"],
-  bank: { exists: "yes", holding: "sole", nominee: "yes" },
-  epfo: { exists: "yes", salaried: true, serviceYears: 22 },
+  banks: {
+    exists: "yes",
+    accounts: [{
+      id: "bank-1",
+      bankName: "State Bank of India",
+      bankType: "commercial",
+      holding: "sole",
+      nominee: "yes",
+      nomineeName: "Spouse",
+    }],
+  },
+  employment: "employed-at-death",
+  epfo: { exists: "yes", serviceYears: 22 },
   insurance: { exists: "unknown" },
   pension: { exists: "no" },
+  documents: {
+    "death-certificate": "yes",
+    "claimant-id": "yes",
+    "cancelled-cheque": "no",
+    "joint-photograph": "no",
+  },
 };
 ```
 
@@ -84,8 +103,8 @@ existence is unknown (insurance → "check for policies").
 ```ts
 export function deriveClaims(profile: EstateProfile): ClaimSet {
   const gates = evaluateGates(profile);
-  // Hard gate: no death certificate → nothing routes. Return early with a
-  // single instruction rather than a checklist the family cannot act on.
+  // Hard gate: a missing or pending death certificate locks every route.
+  // Return the gate so the renderer can show the single next action.
   if (gates.some(g => g.blocking)) return { gates, claims: [] };
 
   const claims = RULES
@@ -140,7 +159,7 @@ Print `[VERIFY]` rows with a visible marker. An unverified legal claim that
 
 - [ ] `bun run core.ts` prints a checklist with no network access
 - [ ] Changing `epfo.exists` to `"no"` removes claims 2 and 3 from the output
-- [ ] Changing `deathCertificate` to `false` collapses output to the single gate
+- [ ] Changing `deathCertificate` to `"no"` or `"applied"` collapses output to the single gate
 - [ ] Every printed claim shows a non-empty `legalBasis`
 - [ ] Committed: `feat: iteration 0 — claims engine derives checklist from profile`
 

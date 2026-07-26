@@ -38,7 +38,7 @@ never asked *which claims exist* or *which documents are required*.
                      ┌──────────────▼───────────────┐
                      │  answer extraction           │  ← LLM, constrained:
                      │  transcript → typed answer   │    json_schema output,
-                     └──────────────┬───────────────┘    enum-only fields
+                     └──────────────┬───────────────┘    one field per turn
                                     │
                      ┌──────────────▼───────────────┐
                      │  EstateProfile (Convex doc)  │  ← single source of truth.
@@ -85,10 +85,11 @@ Three types carry the entire system. Defined in `src/rules/types.ts`.
 // `undefined` means "not yet asked", never "no".
 type EstateProfile = {
   // gates — section 0 of the rules table
-  deathCertificate?: boolean;
+  deathCertificate?: "yes" | "applied" | "no";
   religion?: "hindu" | "sikh" | "jain" | "buddhist" | "muslim" | "christian" | "other";
   will?: "yes" | "no" | "unsure";
   state?: "karnataka" | "other";
+  district?: string;             // Karnataka district; sets court + Nadakacheri routing
 
   // relationship of the person being interviewed, to the deceased
   relationship?: "spouse" | "son" | "daughter" | "mother" | "father" | "other";
@@ -99,13 +100,19 @@ type EstateProfile = {
   // ≤15L commercial → no-court route; >15L → succession certificate;
   // cooperative drops the threshold to 5L. Getting these wrong sends a
   // family to court that didn't need to go.
-  bank?: AssetAnswer & {
-    holding?: "sole" | "joint";
-    survivorship?: YesNoUnknown;      // E-or-S clause — joint ≠ automatic survivorship
-    nominee?: YesNoUnknown;
-    bankType?: "commercial" | "cooperative";
-    amountBracket?: "under-5L" | "5L-15L" | "over-15L" | "unknown";
-    dormantOver10Years?: YesNoUnknown; // → UDGAM discovery card
+  banks?: AssetAnswer & {
+    accounts?: Array<{
+      id: string;                       // stable within the session
+      bankName?: string;
+      bankType?: "commercial" | "cooperative" | "unknown";
+      holding?: "sole" | "joint";
+      jointHolderIsClaimant?: YesNoUnknown;
+      survivorship?: YesNoUnknown;      // E-or-S clause — joint ≠ automatic survivorship
+      nominee?: YesNoUnknown;
+      nomineeName?: string;             // collected only when a nominee is printed
+      amountBracket?: "under-5L" | "5L-15L" | "over-15L" | "unknown";
+      dormantOver10Years?: YesNoUnknown; // → UDGAM discovery card
+    }>;
   };
 
   // §2 — insurance. `nomineeIsClaimant` distinguishes "you file" from
@@ -128,8 +135,22 @@ type EstateProfile = {
   demat?: AssetAnswer & { nominee?: YesNoUnknown; valueBracket?: "under-5L" | "over-5L" | "unknown" };
   mutualFunds?: AssetAnswer & { nominee?: YesNoUnknown; valueBracket?: "under-5L" | "over-5L" | "unknown" };
 
-  smallSavings?: AssetAnswer;    // PPF / SCSS — excluded from RBI-2025, own scheme rules
-  liabilities?: YesNoUnknown;    // → the "debts don't vanish" card
+  postOfficeSchemes?: AssetAnswer & {
+    schemes?: Array<"ppf" | "nsc" | "mis" | "scss" | "other">;
+  };                              // excluded from RBI-2025; own scheme rules
+
+  // Track-card-only assets in v0.1. Presence is captured so the family is not
+  // left with silence, but these do not enter the movable-claims workflow.
+  immovableProperty?: AssetAnswer; // house / land
+  vehicle?: AssetAnswer;
+  bankLocker?: AssetAnswer;
+
+  receivables?: YesNoUnknown;     // money owed to the deceased → certificate track
+  liabilities?: YesNoUnknown;     // loans/cards → "debts don't vanish" card
+
+  // Filled after the interview from only the documents relevant to provisional
+  // claims. Missing documents affect readiness, never entitlement.
+  documents?: Record<string, YesNoUnknown>;
 };
 
 type YesNoUnknown = "yes" | "no" | "unknown";
@@ -138,6 +159,7 @@ type AssetAnswer = { exists: YesNoUnknown };
 // One derived entitlement. Produced only by the rules engine.
 type Claim = {
   id: string;                    // "bank-nominee", "epfo-edli"
+  assetRef?: string;             // account/asset id when several rows of one kind apply
   title: string;                 // "EPFO death insurance (EDLI)"
   authority: string;             // where it is physically filed
   forms: string[];               // "Form 5IF", "Annex I-B"
@@ -191,6 +213,14 @@ account" — the first produces a checklist item ("check with his last employer'
 HR"), the second produces nothing. Collapsing them silently drops claims, which
 is the exact failure this product exists to prevent.
 
+**Design note on documents:** document possession does not decide whether a
+claim exists. The rules engine first derives provisional claims from the estate
+facts, then resolves each claim's `docsRequired` against `profile.documents`.
+A missing form or certificate changes a claim from `filable` to `blocked`; it
+never removes the entitlement. The document checklist therefore contains only
+documents relevant to claims already identified, rather than one enormous
+generic list.
+
 ## Modules
 
 | Path | Owns | Depends on |
@@ -207,7 +237,7 @@ is the exact failure this product exists to prevent.
 | `src/sarvam/tts.ts` | `speak(text, lang) → audio buffer` | Sarvam API |
 | `src/sarvam/chat.ts` | Constrained JSON completion | Sarvam API |
 | `convex/schema.ts` | `sessions` table — one doc per interview | — |
-| `convex/sessions.ts` | `create`, `get` query, `applyAnswer` mutation | `src/rules/` |
+| `convex/sessions.ts` | `create`, `get`, `applyAnswer`, `setDocumentStatus` | `src/rules/` |
 | `convex/turn.ts` | `"use node"` action: audio → STT → extract → mutation | `src/sarvam/`, `src/interview/` |
 | `core.ts` | Iteration 0 entrypoint — hardcoded profile, printed checklist | `rules/` |
 
@@ -221,15 +251,21 @@ integration exists.
 `nextQuestion()` is a pure function over the profile, not a fixed script. It
 returns the highest-value unanswered question:
 
-1. **Gates first.** Death certificate, religion, will. These can invalidate
-   every downstream question, so they are never asked late.
-2. **Then asset presence**, ordered by how commonly the claim is missed.
-   EPFO before bank — people always remember the bank account and never
-   remember EDLI.
-3. **Then drill-down**, only into assets that answered `yes` or `unknown`.
-   If `epfo.exists === "no"`, the service-years question is never asked.
-4. **Then heirs**, only if the shares section will actually render (Hindu
-   intestate path).
+1. **Hard gates first.** Death-certificate status, religion, and will. These can
+   change or lock every downstream route, so they are never asked late.
+2. **Identity and routing.** Relationship to the person who died, then their
+   Karnataka district. District selects the court and Nadakacheri guidance.
+3. **Employment and asset presence**, ordered by how commonly the claim is
+   missed: employment/PF before bank, then post-office schemes, pension,
+   insurance, securities, property/vehicle, locker, receivables, and debts.
+4. **Conditional drill-down.** Ask follow-ups only for assets answered `yes` or
+   `unknown`. Each known bank account gets its own bank name, bank type,
+   sole/joint, joint-holder, nominee, and amount-bracket sequence. If
+   `epfo.exists === "no"`, the PF follow-ups are never asked.
+5. **Heirs**, only if the shares section will actually render (Hindu intestate
+   path).
+6. **Relevant documents.** Once provisional claims exist, show checkboxes only
+   for their required documents and store each as `yes | no | unknown`.
 
 Returns `null` when nothing further would change the ClaimSet. That is the
 interview's terminating condition — not a question count, and not the model
@@ -267,7 +303,7 @@ Cards are the other half. Three inferences produce no claim at all:
 
 | Inference | Card | Why it earns its place |
 |---|---|---|
-| bank ticked + "don't know" on accounts | UDGAM unclaimed-deposit search | Money that already exists and nobody knows about |
+| banks ticked + "don't know" on accounts | UDGAM unclaimed-deposit search | Money that already exists and nobody knows about |
 | any asset with no nominee | "add nominees to *your own* accounts this week" | The one line that helps the listener, not the estate |
 | liabilities yes/unknown | "debts don't vanish — check CIBIL before distributing" | Stops a family distributing assets they'll be chased for |
 

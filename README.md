@@ -35,7 +35,7 @@ still missing.
 ```
 speech (kn-IN / en-IN)
   → Sarvam Saaras v3            transcript
-  → constrained extraction      one enum answer, one field
+  → constrained extraction      one typed answer, one field
   → EstateProfile               Convex doc
   → rules engine                pure function, no model
   → checklist + next question

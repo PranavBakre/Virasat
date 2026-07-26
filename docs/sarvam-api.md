@@ -105,14 +105,15 @@ OpenAI-compatible body. The parameter that matters most here:
   "temperature": 0.1,
   "response_format": {
     "type": "json_schema",
-    "json_schema": { "…": "enum-constrained answer shape" }
+    "json_schema": { "…": "question-specific typed answer shape" }
   }
 }
 ```
 
-**Always use `response_format: json_schema` for answer extraction.** The
-extraction step must return one of a fixed set of enum values, never prose. This
-is what enforces the deterministic boundary in
+**Always use `response_format: json_schema` for answer extraction.** Routing
+questions return one of a fixed set of enum values. The few label-only questions
+(bank name and nominee name) return bounded short text that is never used to
+decide entitlement. This is what enforces the deterministic boundary in
 [architecture.md](architecture.md#the-one-architectural-boundary-that-matters) —
 the model classifies what was said, it does not decide what is owed.
 

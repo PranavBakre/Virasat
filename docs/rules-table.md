@@ -21,14 +21,20 @@
 
 | condition | effect |
 |---|---|
-| death certificate = no | map shows single red card: "get death certificate first — registrar of births & deaths / hospital → municipal office. nothing moves without it." all claims render locked |
+| death certificate = no | map collapses to one brick hard-gate card: "get the death certificate first — registrar of births & deaths / hospital → municipal office. nothing moves without it." claim routing stays locked |
+| death certificate = applied | map collapses to one brick hard-gate card: "application submitted — keep the acknowledgement and wait for the certificate. nothing can be filed until it arrives." claim routing stays locked |
 | religion ≠ hindu/sikh/jain/buddhist | claims + checklists still shown, shares section replaced with: "share calculation follows [Muslim personal law / ISA rules] — consult a lawyer for division. document requirements below still apply." |
 | will = yes | all no-will routes swap to probate/executor track (section 6). amber flag if will = "not sure" |
 | relationship not in class I (HSA schedule: widow, son, daughter, mother) [VERIFY class I list against HSA schedule, indiacode] | banner: "claims are normally filed by a class I heir. you can prepare the packet; a legal heir must sign/file." |
+| district provided | use the Karnataka district to name the district court and Nadakacheri route; Bengaluru uses the city civil court where applicable [VERIFY exact district routing names against S6/S9] |
 
 ---
 
 ## 1. BANK ACCOUNTS & FDs
+
+Apply this table independently to every known account. Each materialized claim
+carries the account's session id and bank name so claims from multiple banks do
+not collapse into one row.
 
 | holding | nominee | amount | route | authority | docs required | timeline note |
 |---|---|---|---|---|---|---|
@@ -38,6 +44,11 @@
 | sole | no | > ₹15 lakh | succession certificate track | city civil court (bengaluru) / district court (elsewhere in karnataka) | succession certificate (see section 5) + death certificate + claimant ID + account proof | months — set expectation honestly |
 | sole | no | any, cooperative bank | threshold is ₹5 lakh, not 15 | branch / court | same as above at the lower threshold | [VERIFY per RBI-2025] |
 | any | — | account dormant >10 yrs | funds may be in RBI DEA fund | bank first, UDGAM portal to search | same as applicable row above + UDGAM search result | discovery card: udgam.rbi.org.in |
+
+Before choosing a no-nominee route, collect the bank type and one of four amount
+brackets: under ₹5 lakh, ₹5–15 lakh, over ₹15 lakh, or unknown. Unknown uses the
+stricter route provisionally and tells the family to obtain a balance
+certificate; it is never guessed downward.
 
 ---
 
@@ -111,9 +122,13 @@ agent line: "under the hindu succession act, [name]'s property divides equally a
 |---|---|
 | employed at death | gratuity + EDLI + final salary claims, even if user never mentioned them |
 | receiving pension | family pension + arrears claim |
-| any bank ticked + "don't know" on accounts | UDGAM unclaimed-deposit search card |
+| banks ticked + "don't know" on accounts | UDGAM unclaimed-deposit search card |
 | retired + 60+ | post office schemes prompt in drill-down |
+| post office schemes = yes / unknown | separate-scheme track card: PPF, NSC, MIS, and SCSS do not use the RBI deceased-bank route; identify the scheme before giving filing guidance [S1] |
 | any asset with no nominee | one-line nudge card: "for YOUR OWN accounts — add nominees this week. this entire process disappears when a nominee exists." (delight + impact line) |
+| house / land or vehicle = yes / unknown | out-of-scope track card naming the revenue/khata or RTO route; never present it as a movable-asset claim |
+| bank locker = yes / unknown | locker-access track card; do not claim coverage of the contents |
+| money owed to deceased = yes / unknown | succession-certificate track card for debts and securities owed to the deceased |
 | liabilities = yes / unknown | card: "debts don't vanish — check CIBIL, credit cards, running loans before distributing assets" |
 
 ---
