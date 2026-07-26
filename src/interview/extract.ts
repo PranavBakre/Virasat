@@ -61,19 +61,76 @@ function hasPhrase(text: string, phrases: readonly string[]): boolean {
   });
 }
 
+// Beyond a few words an answer can carry a negation that flips its meaning
+// ("no, he did have an account"), and keyword matching gets that backwards.
+// Anything longer goes to the model.
+const MAX_FAST_PATH_WORDS = 3;
+
+// Ceiling on how long an answer may wait on the model before local matching takes
+// over. Set from measured behaviour, not guessed: 5.3s and 11.6s on real inputs.
+const EXTRACTION_TIMEOUT_MS = 2_500;
+const TIMED_OUT = Symbol("extraction-timeout");
+
+// Resolves only answers that cannot be misread: an exact enum value, or a short
+// utterance matching exactly one of yes/no/don't-know. Returns null for anything
+// ambiguous so the model still handles the hard cases.
+export function extractFastPath(question: Question, transcript: string): string | null {
+  if (question.kind !== "enum") return null;
+  const normalized = transcript.trim().toLocaleLowerCase();
+  if (!normalized) return null;
+
+  const exact = question.values.find((value) => value.toLocaleLowerCase() === normalized);
+  if (exact) return exact;
+
+  if (normalized.split(/\s+/u).length > MAX_FAST_PATH_WORDS) return null;
+
+  const matches: string[] = [];
+  if (question.values.includes("unknown") && hasPhrase(normalized, UNKNOWN)) matches.push("unknown");
+  if (question.values.includes("unsure") && hasPhrase(normalized, UNKNOWN)) matches.push("unsure");
+  if (question.values.includes("no") && hasPhrase(normalized, NO)) matches.push("no");
+  if (question.values.includes("yes") && hasPhrase(normalized, YES)) matches.push("yes");
+  for (const value of question.values) {
+    if (matches.includes(value)) continue;
+    if (DIRECT_VALUES[value]?.some((term) => normalized.includes(term))) matches.push(value);
+  }
+
+  // Two competing matches in a short answer is not confidence. Defer to the model.
+  return matches.length === 1 ? (matches[0] as string) : null;
+}
+
 export async function extractAnswer(
   question: Question,
   transcript: string,
   client: SarvamAIClient | null,
-): Promise<{ value: string | null; source: "sarvam" | "local" }> {
+): Promise<{ value: string | null; source: "sarvam" | "local" | "fast" }> {
   if (typeof transcript !== "string" || transcript.trim().length > 500) {
     return { value: null, source: "local" };
   }
 
+  // "yes", "ಹೌದು", "no" — the overwhelming majority of answers — resolve with no
+  // network call at all. Calling the model first made every one of them wait on a
+  // round trip for a classification that is already unambiguous.
+  const fast = extractFastPath(question, transcript);
+  if (fast !== null) return { value: fast, source: "fast" };
+
   if (client) {
     try {
-      const value = await extractWithSarvam(client, question, transcript.trim());
-      if (value !== null) return { value, source: "sarvam" };
+      // sarvam-30b reasons before answering, and measured 5.3s and 11.6s on real
+      // free-form answers. Correct, but unusable in a live interview — so race it
+      // against a deadline and fall back to keyword matching, which resolves most
+      // of these anyway. The request is abandoned, not cancelled; we just stop
+      // waiting on it.
+      const value = await Promise.race([
+        extractWithSarvam(client, question, transcript.trim()),
+        new Promise<typeof TIMED_OUT>((resolve) =>
+          setTimeout(() => resolve(TIMED_OUT), EXTRACTION_TIMEOUT_MS)
+        ),
+      ]);
+      if (value === TIMED_OUT) {
+        console.log("Sarvam extraction timed out; using local matching");
+      } else if (value !== null) {
+        return { value, source: "sarvam" };
+      }
     } catch (error) {
       console.log("Sarvam extraction unavailable", error);
     }

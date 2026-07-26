@@ -18,7 +18,14 @@ export async function extractWithSarvam(
     model: "sarvam-30b",
     stream: false,
     temperature: 0.1,
-    max_tokens: 80,
+    // sarvam-30b is a reasoning model: it fills `reasoning_content` before it
+    // emits `content`. At max_tokens 80 it hit finish_reason "length" during
+    // reasoning every single time and returned content: null — so this whole
+    // path silently failed and every answer fell through to local matching after
+    // paying the round trip. Measured: 605 completion tokens to classify
+    // "we have it" as "yes". reasoning_effort "low" does NOT reduce this.
+    // Only reached when local matching cannot place the answer.
+    max_tokens: 1_024,
     messages: [
       {
         role: "system",

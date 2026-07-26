@@ -19,6 +19,14 @@ let audioContext;
 let microphone;
 let worklet;
 let ttsChunks = [];
+let audioReady = false;
+let warmUpPromise = null;
+let sttReady = false;
+let stopRequested = false;
+let pendingPcm = [];
+// ~4s of 40ms chunks. Enough to cover any handshake; bounded so a stuck socket
+// cannot grow this without limit.
+const MAX_PENDING_CHUNKS = 100;
 
 function text(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -46,7 +54,15 @@ function connect() {
       state = message.payload;
       render();
     } else if (message.type === "stt_ready") {
-      document.querySelector("#mic-status").textContent = "Listening… release when finished";
+      sttReady = true;
+      flushPendingPcm();
+      if (stopRequested) {
+        stopRequested = false;
+        send({ type: "stt_stop" });
+        document.querySelector("#mic-status").textContent = "Reading your answer…";
+      } else {
+        document.querySelector("#mic-status").textContent = "Listening… release when finished";
+      }
     } else if (message.type === "transcript") {
       document.querySelector("#live-transcript").textContent = message.text;
     } else if (message.type === "unclear") {
@@ -246,46 +262,95 @@ function render() {
   renderAncillary();
 }
 
+// The audio graph is built ONCE and kept alive for the session. Building it
+// inside the press handler cost a getUserMedia device open plus a worklet module
+// fetch — 300ms to over a second on the first press — and captured nothing during
+// that window. A short answer like "yes" fits entirely inside it, which is why
+// voice "sometimes didn't detect".
+async function warmUpAudio() {
+  if (audioReady) return true;
+  if (warmUpPromise) return warmUpPromise;
+  warmUpPromise = (async () => {
+    try {
+      microphone = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
+      // Ask the browser for 16 kHz so IT does the resampling. The worklet's own
+      // decimation then degenerates to a pass-through — hand-rolled decimation
+      // with no low-pass filter aliases, and aliasing costs recognition accuracy.
+      audioContext = new AudioContext({ sampleRate: 16_000 });
+      await audioContext.audioWorklet.addModule("/pcm-worklet.js");
+      worklet = new AudioWorkletNode(audioContext, "pcm16-processor");
+      audioContext.createMediaStreamSource(microphone).connect(worklet);
+      // Keeps the node pulled without routing the microphone to the speakers.
+      const sink = audioContext.createGain();
+      sink.gain.value = 0;
+      worklet.connect(sink).connect(audioContext.destination);
+      worklet.port.onmessage = (event) => handlePcm(event.data);
+      audioReady = true;
+      return true;
+    } catch (error) {
+      console.log("Microphone unavailable", error);
+      document.querySelector("#mic-status").textContent =
+        "Microphone unavailable. Type the answer below.";
+      warmUpPromise = null;
+      return false;
+    }
+  })();
+  return warmUpPromise;
+}
+
+// The server discards binary frames while its Sarvam socket is still opening
+// (`if (!ws.data.stt) return`), and opening it is a full WebSocket handshake.
+// Hold audio here and flush once the socket confirms, instead of losing the
+// opening syllables of every answer.
+function handlePcm(buffer) {
+  if (!recording) return;
+  if (!sttReady) {
+    if (pendingPcm.length < MAX_PENDING_CHUNKS) pendingPcm.push(buffer);
+    return;
+  }
+  if (socket?.readyState === WebSocket.OPEN) socket.send(buffer);
+}
+
+function flushPendingPcm() {
+  if (socket?.readyState === WebSocket.OPEN) {
+    for (const buffer of pendingPcm) socket.send(buffer);
+  }
+  pendingPcm = [];
+}
+
 async function startRecording() {
   if (recording || !state.question) return;
   micPressed = true;
-  try {
-    microphone = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1 } });
-    if (!micPressed) return cleanupMicrophone();
-    audioContext = new AudioContext();
-    await audioContext.audioWorklet.addModule("/pcm-worklet.js");
-    if (!micPressed) return cleanupMicrophone();
-    worklet = new AudioWorkletNode(audioContext, "pcm16-processor");
-    const source = audioContext.createMediaStreamSource(microphone);
-    source.connect(worklet);
-    worklet.connect(audioContext.destination);
-    worklet.port.onmessage = (event) => {
-      if (recording && socket.readyState === WebSocket.OPEN) socket.send(event.data);
-    };
-    recording = true;
-    send({ type: "stt_start", questionId: state.question.id });
-    document.querySelector("#mic-button").textContent = "Release to send";
-  } catch (error) {
-    console.log("Microphone unavailable", error);
-    document.querySelector("#mic-status").textContent = "Microphone unavailable. Type the answer below.";
-  }
-}
-
-function cleanupMicrophone() {
-  recording = false;
-  microphone?.getTracks().forEach((track) => track.stop());
-  worklet?.disconnect();
-  void audioContext?.close();
-  microphone = undefined;
-  worklet = undefined;
-  audioContext = undefined;
-  document.querySelector("#mic-button").textContent = "Hold to speak";
+  document.querySelector("#mic-status").textContent = "Starting…";
+  if (!(await warmUpAudio())) return;
+  if (!micPressed) return;
+  await audioContext.resume();
+  pendingPcm = [];
+  sttReady = false;
+  stopRequested = false;
+  recording = true;
+  send({ type: "stt_start", questionId: state.question.id });
+  document.querySelector("#mic-button").textContent = "Release to send";
 }
 
 function stopRecording() {
+  if (!micPressed && !recording) return;
   micPressed = false;
-  if (recording) send({ type: "stt_stop" });
-  cleanupMicrophone();
+  document.querySelector("#mic-button").textContent = "Hold to speak";
+  if (!recording) return;
+  recording = false;
+
+  // A press shorter than the socket handshake still has to deliver its audio, so
+  // defer the stop until stt_ready lands and the buffer has been flushed.
+  if (!sttReady) {
+    stopRequested = true;
+    document.querySelector("#mic-status").textContent = "Sending…";
+    return;
+  }
+  send({ type: "stt_stop" });
+  document.querySelector("#mic-status").textContent = "Reading your answer…";
 }
 
 document.querySelector("#answer-form").addEventListener("submit", (event) => {
@@ -301,8 +366,29 @@ document.querySelector("#language").addEventListener("change", (event) => {
   send({ type: "set_language", language: event.target.value });
 });
 document.querySelector("#reset-button").addEventListener("click", () => send({ type: "reset" }));
-document.querySelector("#mic-button").addEventListener("pointerdown", startRecording);
-document.querySelector("#mic-button").addEventListener("pointerup", stopRecording);
-document.querySelector("#mic-button").addEventListener("pointercancel", stopRecording);
+const micButton = document.querySelector("#mic-button");
+micButton.addEventListener("pointerdown", (event) => {
+  // Retargets pointerup to this button even if the pointer leaves it mid-press.
+  try { micButton.setPointerCapture(event.pointerId); } catch { /* not critical */ }
+  void startRecording();
+});
+micButton.addEventListener("pointerup", stopRecording);
+micButton.addEventListener("pointercancel", stopRecording);
+// Safety net for the cases pointer capture cannot cover: the window losing focus
+// or the tab being hidden mid-press.
+window.addEventListener("pointerup", stopRecording);
+window.addEventListener("blur", stopRecording);
+
+// Pre-open the microphone on hover, but only when permission is already granted
+// so we never surface a permission prompt on a stray mouse movement. By the time
+// the button is pressed the graph is live and capture starts immediately.
+micButton.addEventListener("pointerenter", async () => {
+  if (audioReady || micButton.disabled) return;
+  const granted = await navigator.permissions
+    ?.query({ name: "microphone" })
+    .then((status) => status.state === "granted")
+    .catch(() => false);
+  if (granted) void warmUpAudio();
+});
 
 connect();

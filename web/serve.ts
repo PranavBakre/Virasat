@@ -24,11 +24,13 @@ type Session = {
   language: InterviewLanguage;
   transcript: TranscriptEntry[];
   stt: SttSocket | null;
+  sttLanguage: InterviewLanguage | null;
   sttQuestionId: string | null;
   latestTranscript: string;
   stopping: boolean;
   busy: boolean;
   generation: number;
+  speech: number;
 };
 
 const landing = Bun.file(new URL("./landing.html", import.meta.url));
@@ -44,8 +46,8 @@ function initialSession(
   generation = 0,
 ): Session {
   return {
-    profile: {}, language, transcript: [], stt: null, sttQuestionId: null,
-    latestTranscript: "", stopping: false, busy: false, generation,
+    profile: {}, language, transcript: [], stt: null, sttLanguage: null, sttQuestionId: null,
+    latestTranscript: "", stopping: false, busy: false, generation, speech: 0,
   };
 }
 
@@ -70,9 +72,46 @@ function sendState(ws: Bun.ServerWebSocket<Session>): void {
   });
 }
 
+async function ensureTranscriptionStream(
+  ws: Bun.ServerWebSocket<Session>,
+): Promise<SttSocket | null> {
+  if (!sarvam || !apiKey) return null;
+  if (ws.data.stt && ws.data.sttLanguage === ws.data.language) return ws.data.stt;
+
+  // Language is fixed at connect time, so a language change needs a new socket.
+  closeTranscription(ws.data.stt);
+  ws.data.stt = null;
+  ws.data.sttLanguage = null;
+  try {
+    const socket = await openTranscriptionStream(
+      sarvam, apiKey, ws.data.language,
+      (text) => {
+        // Ignore transcripts arriving outside an utterance, or the tail of a
+        // previous one would leak into the next answer.
+        if (!ws.data.sttQuestionId) return;
+        ws.data.latestTranscript = text;
+        send(ws, { type: "transcript", text, final: false });
+        if (ws.data.stopping) void finishStt(ws);
+      },
+      (error) => console.log("Sarvam STT unavailable", error),
+    );
+    ws.data.stt = socket;
+    ws.data.sttLanguage = ws.data.language;
+    return socket;
+  } catch (error) {
+    console.log("Sarvam STT could not open", error);
+    return null;
+  }
+}
+
 async function speakQuestion(ws: Bun.ServerWebSocket<Session>): Promise<void> {
   const question = nextQuestion(ws.data.profile);
   if (!sarvam || !question) return;
+  // TTS runs unlocked, so a new answer can arrive mid-playback. Stamp this run
+  // and abandon it the moment a newer one starts, or we stream audio for a
+  // question the interview has already moved past.
+  const speech = ws.data.speech + 1;
+  ws.data.speech = speech;
   send(ws, { type: "tts_start", contentType: "audio/mpeg" });
   try {
     for await (const chunk of streamSpeech(
@@ -80,12 +119,13 @@ async function speakQuestion(ws: Bun.ServerWebSocket<Session>): Promise<void> {
       question.copy[ws.data.language],
       ws.data.language,
     )) {
+      if (ws.data.speech !== speech) return;
       ws.send(chunk);
     }
   } catch (error) {
     console.log("Sarvam TTS unavailable", error);
   } finally {
-    send(ws, { type: "tts_end" });
+    if (ws.data.speech === speech) send(ws, { type: "tts_end" });
   }
 }
 
@@ -94,7 +134,12 @@ async function applyTranscript(
   questionId: string,
   transcript: string,
 ): Promise<void> {
-  if (ws.data.busy) return;
+  // Never drop an answer silently — the user typed it and deserves to know why
+  // nothing happened.
+  if (ws.data.busy) {
+    send(ws, { type: "error", code: "busy", message: "Still reading your last answer." });
+    return;
+  }
   const question = nextQuestion(ws.data.profile);
   if (!question || question.id !== questionId) {
     send(ws, { type: "error", code: "stale_question", message: "The question has changed." });
@@ -114,10 +159,14 @@ async function applyTranscript(
     ws.data.transcript.push({ questionId, label: question.label, answer: transcript });
     send(ws, { type: "answer", questionId, text: transcript, value: result.value });
     sendState(ws);
-    await speakQuestion(ws);
   } finally {
     ws.data.busy = false;
   }
+
+  // Released the lock first: speaking the next question must not block the user
+  // from answering it. Previously `busy` was held for the whole TTS stream, so
+  // rapid typed answers were rejected while audio was still arriving.
+  void speakQuestion(ws);
 }
 
 async function finishStt(ws: Bun.ServerWebSocket<Session>): Promise<void> {
@@ -125,9 +174,10 @@ async function finishStt(ws: Bun.ServerWebSocket<Session>): Promise<void> {
   ws.data.stopping = false;
   const questionId = ws.data.sttQuestionId;
   const transcript = ws.data.latestTranscript;
-  closeTranscription(ws.data.stt);
-  ws.data.stt = null;
+  // The socket stays open for the next answer — reconnecting per press cost a
+  // full handshake before any audio could be accepted.
   ws.data.sttQuestionId = null;
+  ws.data.latestTranscript = "";
   if (questionId && transcript) {
     send(ws, { type: "transcript", text: transcript, final: true });
     await applyTranscript(ws, questionId, transcript);
@@ -190,6 +240,9 @@ const server = Bun.serve<Session>({
       if (message.type === "start" || message.type === "set_language") {
         ws.data.language = message.language;
         sendState(ws);
+        // Warm the transcription socket now so the first press is not the thing
+        // that pays for the handshake.
+        void ensureTranscriptionStream(ws);
         if (message.type === "start") await speakQuestion(ws);
       } else if (message.type === "typed_answer") {
         await applyTranscript(ws, message.questionId, message.text);
@@ -215,29 +268,28 @@ const server = Bun.serve<Session>({
         closeTranscription(ws.data.stt);
         ws.data = initialSession(ws.data.language, ws.data.generation + 1);
         sendState(ws);
+        void ensureTranscriptionStream(ws);
       } else if (message.type === "stt_start") {
         const current = nextQuestion(ws.data.profile);
         if (!sarvam || !apiKey || current?.id !== message.questionId) {
           send(ws, { type: "error", code: "voice_unavailable", message: "Use typed input." });
           return;
         }
-        closeTranscription(ws.data.stt);
         ws.data.latestTranscript = "";
+        ws.data.stopping = false;
         ws.data.sttQuestionId = message.questionId;
-        ws.data.stt = await openTranscriptionStream(
-          sarvam, apiKey, ws.data.language,
-          (text) => {
-            ws.data.latestTranscript = text;
-            send(ws, { type: "transcript", text, final: false });
-            if (ws.data.stopping) void finishStt(ws);
-          },
-          (error) => console.log("Sarvam STT unavailable", error),
-        );
+        // Normally already open and warm, so this resolves immediately.
+        const stream = await ensureTranscriptionStream(ws);
+        if (!stream) {
+          ws.data.sttQuestionId = null;
+          send(ws, { type: "error", code: "voice_unavailable", message: "Use typed input." });
+          return;
+        }
         send(ws, { type: "stt_ready" });
       } else if (message.type === "stt_stop" && ws.data.stt) {
         ws.data.stopping = true;
         finishTranscription(ws.data.stt);
-        setTimeout(() => void finishStt(ws), 800);
+        setTimeout(() => void finishStt(ws), 350);
       }
     },
     close(ws) {
