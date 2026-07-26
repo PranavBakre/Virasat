@@ -13,11 +13,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/tokens.js"></script>
     <style>
+      :root { --baseline-font: 1px; }
+
       /* The register is a document. Digits must line up in the gutter. */
       .tnum { font-variant-numeric: tabular-nums; }
 
       /* Stops a two-line question orphaning its last word. */
       .balance { text-wrap: balance; }
+
+      #messages {
+        scrollbar-color: #D5D2C8 transparent;
+        scrollbar-width: thin;
+      }
+
+      #typed-answer {
+        field-sizing: content;
+        max-height: calc(120 * var(--baseline-font));
+      }
 
       /* Keyboard focus must be visible on a light ground. */
       :focus-visible {
@@ -39,18 +51,18 @@
     </style>
   </head>
   <body class="min-h-screen bg-paper font-sans text-[17px] leading-[1.6] text-ink">
-    <main class="mx-auto max-w-[1380px] px-9 py-7">
-      <header class="mb-6 flex items-baseline justify-between gap-8 border-b border-rule pb-4">
+    <main class="mx-auto max-w-[1380px] px-5 py-5 sm:px-9 sm:py-7">
+      <header class="mb-6 flex flex-col gap-4 border-b border-rule pb-4 md:flex-row md:items-baseline md:justify-between md:gap-8">
         <div class="flex items-baseline gap-4">
           <h1 class="text-[21px] font-medium tracking-[0.01em] text-indigo">Virasat</h1>
           <p class="font-voice text-[17px] text-ink2">ವಿರಾಸತ್</p>
         </div>
-        <div class="flex items-center gap-5">
+        <div class="flex flex-wrap items-center gap-3 sm:gap-5">
           <label class="text-[14px] text-ink2" for="language">Interview language</label>
           <select id="language" class="border border-rule bg-sheet px-3 py-2 text-[15px] text-ink">
-            <option value="kn-IN">ಕನ್ನಡ</option>
-            <option value="hi-IN">हिन्दी</option>
             <option value="en-IN">English</option>
+            <option value="hi-IN">हिन्दी</option>
+            <option value="kn-IN">ಕನ್ನಡ</option>
           </select>
           <p class="text-right text-[14px] text-ink2">
             Karnataka · Hindu intestate succession · movable assets
@@ -58,63 +70,100 @@
         </div>
       </header>
 
-      <div class="register-grid grid grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] gap-9">
+      <div class="register-grid grid gap-7 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:gap-9">
         <!-- ─────────── the conversation ─────────── -->
-        <section class="no-print flex min-h-[540px] flex-col">
-          <div class="flex items-baseline justify-between border-b border-ruleSoft pb-2">
-            <h2 class="text-[13px] font-medium tracking-[0.06em] text-ink2">The conversation</h2>
+        <section class="no-print flex min-h-[620px] flex-col overflow-hidden border border-rule bg-sheet lg:h-[calc(100vh-154px)] lg:min-h-[620px]">
+          <div class="flex items-center justify-between gap-5 border-b border-rule px-5 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-indigo font-voice text-[18px] text-sheet" aria-hidden="true">
+                V
+              </div>
+              <div>
+                <h2 class="text-[16px] font-medium leading-tight text-ink">Virasat assistant</h2>
+                <p class="mt-1 flex items-center gap-2 text-[13px] leading-none text-ink2">
+                  <span class="h-2 w-2 rounded-full bg-neem"></span>
+                  Estate interview
+                </p>
+              </div>
+            </div>
             <button id="reset-button" class="text-[14px] font-medium text-indigo hover:underline" type="button">
-              Start again
+              Start over
             </button>
           </div>
 
-          <!-- accumulated answers: what the agent already knows -->
-          <dl id="transcript" class="mt-4"></dl>
-
-          <!-- the live question -->
-          <div class="mt-7">
-            <p id="step-label" class="text-[13px] font-medium tracking-[0.06em] text-ink2"></p>
-            <!-- English leads; Kannada sits under it, smaller. Never italic —
-                 slanted Kannada is not an idiomatic emphasis form. -->
-            <p id="question-en" class="balance mt-3 max-w-[38ch] font-voice text-[28px] leading-[1.35] text-indigo">
-              Let’s work out what your family can claim.
-            </p>
-            <p id="question-kn" class="mt-3 max-w-[40ch] font-voice text-[19px] leading-[1.75] text-ink2">
-              ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಏನು ಸಲ್ಲಿಸಬೇಕು ಎಂಬುದನ್ನು ಒಟ್ಟಿಗೆ ನೋಡೋಣ.
-            </p>
-            <div id="answer-panel" class="mt-6">
-              <button
-                id="mic-button"
-                type="button"
-                class="w-full bg-indigo px-5 py-4 text-[17px] font-medium text-sheet disabled:cursor-not-allowed disabled:bg-ink2"
-              >
-                Hold to speak
-              </button>
-              <p id="mic-status" class="mt-2 min-h-6 text-[14px] text-ink2"></p>
-              <p id="live-transcript" class="mt-2 min-h-7 border-l-2 border-rule pl-4 font-voice text-[17px] text-ink"></p>
-              <form id="answer-form" class="mt-5">
-                <label class="block text-[14px] font-medium text-ink" for="typed-answer">
-                  Or type your answer
-                </label>
-                <div class="mt-2 flex">
-                  <input
-                    id="typed-answer"
-                    class="min-w-0 flex-1 border border-rule bg-sheet px-4 py-3 text-[17px]"
-                    maxlength="500"
-                    autocomplete="off"
-                    required
-                  />
-                  <button class="bg-indigo px-5 py-3 text-[16px] font-medium text-sheet" type="submit">
-                    Send
-                  </button>
-                </div>
-              </form>
-              <div id="document-panel" class="mt-7 hidden"></div>
+          <div id="messages" class="flex-1 overflow-y-auto px-4 py-5 sm:px-5" aria-live="polite">
+            <div class="flex items-end gap-2.5">
+              <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo font-voice text-[13px] text-sheet" aria-hidden="true">V</div>
+              <div class="max-w-[86%] rounded-[14px] rounded-bl-[3px] border border-ruleSoft bg-paper px-4 py-3">
+                <p class="text-[15px] leading-[1.5] text-ink">
+                  I’ll ask one question at a time and build your claims checklist as we go.
+                </p>
+              </div>
             </div>
+
+            <div id="transcript"></div>
+
+            <div id="current-question" class="mt-5 flex items-end gap-2.5">
+              <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo font-voice text-[13px] text-sheet" aria-hidden="true">V</div>
+              <div class="max-w-[86%] rounded-[14px] rounded-bl-[3px] border border-ruleSoft bg-paper px-4 py-3">
+                <p id="step-label" class="mb-1 text-[12px] font-medium tracking-[0.06em] text-ink2"></p>
+                <!-- English leads; Kannada sits under it, smaller. Never italic —
+                     slanted Kannada is not an idiomatic emphasis form. -->
+                <p id="question-en" class="balance font-voice text-[19px] leading-[1.45] text-indigo">
+                  Let’s work out what your family can claim.
+                </p>
+                <p id="question-kn" class="mt-2 font-voice text-[16px] leading-[1.65] text-ink2">
+                  ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಏನು ಸಲ್ಲಿಸಬೇಕು ಎಂಬುದನ್ನು ಒಟ್ಟಿಗೆ ನೋಡೋಣ.
+                </p>
+              </div>
+            </div>
+
+            <div id="document-panel" class="mt-6 hidden"></div>
           </div>
 
-          <div class="mt-auto pt-8">
-            <p id="voice-note" class="border-t border-ruleSoft pt-3 text-[13px] text-ink2">
+          <div id="answer-panel" class="border-t border-rule bg-paper px-4 py-3 sm:px-5">
+            <div id="voice-feedback" class="mb-2 hidden rounded-[10px] border border-ruleSoft bg-sheet px-3 py-2">
+              <p id="mic-status" class="text-[13px] text-ink2"></p>
+              <p id="live-transcript" class="mt-1 font-voice text-[15px] text-ink"></p>
+            </div>
+            <form id="answer-form">
+              <label class="sr-only" for="typed-answer">Type your answer</label>
+              <div class="flex items-end gap-2 rounded-[14px] border border-rule bg-sheet p-2 focus-within:border-indigo">
+                <button
+                  id="mic-button"
+                  type="button"
+                  class="flex h-10 w-10 shrink-0 touch-none items-center justify-center rounded-[10px] text-indigo transition-colors hover:bg-paper disabled:cursor-not-allowed disabled:text-ink2"
+                  aria-label="Hold to speak"
+                  title="Hold to speak"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                    <rect x="8" y="3" width="8" height="12" rx="4"></rect>
+                    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M8.5 21h7"></path>
+                  </svg>
+                </button>
+                <textarea
+                  id="typed-answer"
+                  class="min-h-10 min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-[16px] leading-[1.5] outline-none placeholder:text-ink2"
+                  maxlength="500"
+                  rows="1"
+                  autocomplete="off"
+                  placeholder="Type your answer…"
+                  required
+                ></textarea>
+                <button
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-indigo text-sheet transition-colors hover:bg-ink"
+                  type="submit"
+                  aria-label="Send answer"
+                  title="Send answer"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                    <path d="m5 12 14-7-4.5 14-3-5.5L5 12Z"></path>
+                    <path d="m11.5 13.5 3-3"></path>
+                  </svg>
+                </button>
+              </div>
+            </form>
+            <p id="voice-note" class="mt-2 text-[12px] text-ink2">
               Connecting to the interview…
             </p>
           </div>

@@ -18,6 +18,11 @@ export async function extractWithSarvam(
     model: "sarvam-30b",
     stream: false,
     temperature: 0.1,
+    // Reasoning disabled. sarvam-30b reasons by default and measured 2.4-11s,
+    // returning content: null when the budget ran out mid-thought. Disabling it
+    // takes the same classification to ~200ms with 7 completion tokens. The SDK
+    // enum only lists low|medium|high; null is the documented off switch.
+    reasoning_effort: null as unknown as undefined,
     // sarvam-30b is a reasoning model: it fills `reasoning_content` before it
     // emits `content`. At max_tokens 80 it hit finish_reason "length" during
     // reasoning every single time and returned content: null — so this whole
@@ -30,13 +35,31 @@ export async function extractWithSarvam(
       {
         role: "system",
         content: [
-          "Classify only the field currently being asked.",
-          "Ignore volunteered facts about every other field.",
-          `Question: ${question.copy["en-IN"]}`,
+          "You are reading one spoken answer from a grieving family member in India",
+          "settling an estate. They speak Kannada, Hindi and English, often mixed,",
+          "and they rarely answer with a bare yes or no.",
+          "",
+          `Question asked: ${question.copy["en-IN"]}`,
           question.kind === "enum"
             ? `Allowed values: ${question.values.join(", ")}`
             : `Return only the requested short label, at most ${question.maxLength} characters.`,
-          'Return {"value":"..."}. Use null when the answer is unclear.',
+          "",
+          "Resolve indirect answers rather than giving up on them:",
+          '- Possession implies yes. "I do", "we got it last week", "it is with my',
+          '  brother", "in hand" all mean they have it.',
+          '- Absence implies no. "not yet", "we have not managed it", "it is lost".',
+          '- Only treat an answer as unknown when they say they do not know, not',
+          "  when they are merely vague about detail.",
+          "- A negation can flip a sentence late; read the whole utterance before",
+          '  deciding. "No, he did have one" is yes.',
+          "",
+          "Classify only the field asked about. If they volunteer facts about other",
+          "fields, ignore those completely — another question will collect them.",
+          "",
+          'Return {"value":"..."}. Return null only when the utterance genuinely',
+          "does not address the question at all — not merely because it is",
+          "indirect, colloquial, or code-mixed. Null makes the family repeat",
+          "themselves, so use it as a last resort.",
         ].join("\n"),
       },
       { role: "user", content: transcript },

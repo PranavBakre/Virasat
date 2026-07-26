@@ -1,6 +1,6 @@
 import { SarvamAIClient } from "sarvamai";
 
-export const SUPPORTED_LANGUAGES = ["kn-IN", "hi-IN", "en-IN"] as const;
+export const SUPPORTED_LANGUAGES = ["en-IN", "hi-IN", "kn-IN"] as const;
 export type InterviewLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 export function isInterviewLanguage(value: unknown): value is InterviewLanguage {

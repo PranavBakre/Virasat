@@ -2,6 +2,7 @@ import { deriveClaims } from "../src/rules/engine.ts";
 import type { EstateProfile } from "../src/rules/types.ts";
 import { applyQuestionAnswer, nextQuestion } from "../src/interview/state.ts";
 import { extractAnswer } from "../src/interview/extract.ts";
+import type { QuestionCopy } from "../src/interview/questions.ts";
 import { parseClientMessage, type ServerMessage } from "../src/interview/protocol.ts";
 import { isCurrentGeneration } from "../src/interview/session.ts";
 import {
@@ -19,7 +20,12 @@ import {
 } from "../src/sarvam/stt.ts";
 import { streamSpeech } from "../src/sarvam/tts.ts";
 
-type TranscriptEntry = { questionId: string; label: string; answer: string };
+type TranscriptEntry = {
+  questionId: string;
+  label: string;
+  question: QuestionCopy;
+  answer: string;
+};
 type Session = {
   profile: EstateProfile;
   language: InterviewLanguage;
@@ -47,7 +53,7 @@ const landingV2 = Bun.file(new URL("./landing-v2.html", import.meta.url));
 const tokensV2 = Bun.file(new URL("./tokens-v2.js", import.meta.url));
 
 function initialSession(
-  language: InterviewLanguage = "kn-IN",
+  language: InterviewLanguage = "en-IN",
   generation = 0,
 ): Session {
   return {
@@ -167,7 +173,12 @@ async function applyTranscript(
       return;
     }
     ws.data.profile = applyQuestionAnswer(ws.data.profile, question, result.value);
-    ws.data.transcript.push({ questionId, label: question.label, answer: transcript });
+    ws.data.transcript.push({
+      questionId,
+      label: question.label,
+      question: question.copy,
+      answer: transcript,
+    });
     send(ws, { type: "answer", questionId, text: transcript, value: result.value });
     sendState(ws);
   } finally {

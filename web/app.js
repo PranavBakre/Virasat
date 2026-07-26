@@ -10,7 +10,7 @@ const GROUPS = [
 
 let state = {
   profile: {}, claimSet: { gates: [], claims: [], cards: [] },
-  transcript: [], language: "kn-IN", question: null, sarvamAvailable: false,
+  transcript: [], language: "en-IN", question: null, sarvamAvailable: false,
 };
 let socket;
 let recording = false;
@@ -52,6 +52,8 @@ function connect() {
     const message = JSON.parse(event.data);
     if (message.type === "state") {
       state = message.payload;
+      setMicStatus("");
+      document.querySelector("#live-transcript").textContent = "";
       render();
     } else if (message.type === "stt_ready") {
       sttReady = true;
@@ -61,12 +63,12 @@ function connect() {
         send({ type: "stt_stop" });
         setMicStatus("Reading your answer…");
       } else {
-        document.querySelector("#mic-status").textContent = "Listening… release when finished";
+        setMicStatus("Listening… release when finished");
       }
     } else if (message.type === "transcript") {
       document.querySelector("#live-transcript").textContent = message.text;
     } else if (message.type === "unclear") {
-      document.querySelector("#mic-status").textContent = "I could not place that answer. Please say it again or type it.";
+      setMicStatus("I could not place that answer. Please say it again or type it.");
     } else if (message.type === "tts_start") {
       ttsChunks = [];
     } else if (message.type === "tts_end" && ttsChunks.length) {
@@ -74,11 +76,11 @@ function connect() {
       void audio.play().catch(() => {});
     } else if (message.type === "error") {
       console.log(message.code, message.message);
-      document.querySelector("#mic-status").textContent = message.message;
+      setMicStatus(message.message);
     }
   });
   socket.addEventListener("close", () => {
-    document.querySelector("#mic-status").textContent = "Connection closed. Refresh to continue.";
+    setMicStatus("Connection closed. Refresh to continue.");
   });
 }
 
@@ -171,16 +173,20 @@ function renderRegister() {
   ).join("");
 
   const ready = claims.filter((claim) => claim.status === "filable").length;
+  // A blocking gate is not an empty result. "Nothing identified yet" over a gate
+  // reads as "you are owed nothing", which is the one thing this product must
+  // never accidentally say — point at the step instead.
+  const blocked = (state.claimSet.gates ?? []).some((gate) => gate.blocking);
   document.querySelector("#summary").innerHTML = claims.length
     ? `${claims.length} claims identified${ready ? ` · <span class="text-neem">${ready} ready to file</span>` : ""}`
-    : "Nothing identified yet";
+    : blocked ? "Start with the step below" : "Nothing identified yet";
   const missed = claims.filter((claim) => claim.commonlyMissed).map((claim) => splitTitle(claim.title).name);
   document.querySelector("#summary-note").innerHTML = missed.length
     ? `Includes <span class="font-medium text-terra">${missed.map(text).join(" and ")}</span> — claims most families never file.`
     : "";
   document.querySelector("#empty-state").classList.toggle(
     "hidden",
-    claims.length > 0 || (state.claimSet.cards ?? []).length > 0,
+    claims.length > 0 || (state.claimSet.cards ?? []).length > 0 || blocked,
   );
 }
 
@@ -205,27 +211,60 @@ function renderAncillary() {
 }
 
 function renderConversation() {
-  document.querySelector("#transcript").innerHTML = state.transcript.map((entry) =>
-    `<div class="flex gap-5 border-b border-ruleSoft py-[9px]">
-      <dt class="w-[128px] shrink-0 text-[14px] text-ink2">${text(entry.label)}</dt>
-      <dd class="text-[16px]">${text(entry.answer)}</dd></div>`
-  ).join("");
+  document.querySelector("#transcript").innerHTML = state.transcript.map((entry, index) => {
+    const question = entry.question ?? { "en-IN": entry.label };
+    const localCopy = question[state.language];
+    const translatedQuestion = state.language !== "en-IN" && localCopy
+      ? `<p class="mt-1.5 font-voice text-[15px] leading-[1.6] text-ink2">${text(localCopy)}</p>`
+      : "";
+    return `<div class="mt-5">
+      <div class="flex items-end gap-2.5">
+        <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo font-voice text-[13px] text-sheet" aria-hidden="true">V</div>
+        <div class="max-w-[86%] rounded-[14px] rounded-bl-[3px] border border-ruleSoft bg-paper px-4 py-3">
+          <p class="mb-1 text-[12px] font-medium tracking-[0.06em] text-ink2">QUESTION ${index + 1}</p>
+          <p class="font-voice text-[17px] leading-[1.5] text-indigo">${text(question["en-IN"] ?? entry.label)}</p>
+          ${translatedQuestion}
+        </div>
+      </div>
+      <div class="mt-2 flex justify-end">
+        <div class="max-w-[82%] rounded-[14px] rounded-br-[3px] bg-indigo px-4 py-2.5 text-sheet">
+          <p class="text-[15px] leading-[1.5]">${text(entry.answer)}</p>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
   const question = state.question;
+  // The interview can end because it finished or because a gate stopped it.
+  // Announcing "your checklist is ready" over an empty register is the bug the
+  // will path exposed — the closing line has to match what is actually there.
+  const blockedEnd = (state.claimSet.gates ?? []).some((gate) => gate.blocking);
   document.querySelector("#step-label").textContent = question
-    ? `Question ${state.transcript.length + 1}` : "Interview complete";
+    ? `QUESTION ${state.transcript.length + 1}`
+    : blockedEnd ? "ONE STEP FIRST" : "INTERVIEW COMPLETE";
   document.querySelector("#question-en").textContent =
-    question?.copy["en-IN"] ?? "Your identified claims are shown on the right.";
+    question?.copy["en-IN"] ?? (blockedEnd
+      ? "There is one thing to settle before anything can be filed. It is on the right."
+      : "Your claims checklist is ready.");
   const localQuestion = document.querySelector("#question-kn");
   localQuestion.classList.toggle("hidden", state.language === "en-IN");
   localQuestion.textContent = state.language === "hi-IN"
-    ? question?.copy["hi-IN"] ?? "आपके उत्तरों से पहचाने गए दावे दाईं ओर हैं।"
-    : question?.copy["kn-IN"] ?? "ನಿಮ್ಮ ಉತ್ತರಗಳಿಂದ ಗುರುತಿಸಿದ ಹಕ್ಕುಗಳು ಬಲಭಾಗದಲ್ಲಿವೆ.";
+    ? question?.copy["hi-IN"] ?? (blockedEnd
+      ? "कुछ भी दाखिल करने से पहले एक बात तय करनी है। वह दाईं ओर है।"
+      : "आपकी दावा सूची तैयार है।")
+    : question?.copy["kn-IN"] ?? (blockedEnd
+      ? "ಸಲ್ಲಿಸುವ ಮೊದಲು ಒಂದು ವಿಷಯ ಇತ್ಯರ್ಥವಾಗಬೇಕು. ಅದು ಬಲಭಾಗದಲ್ಲಿದೆ."
+      : "ನಿಮ್ಮ ಹಕ್ಕುಗಳ ಪಟ್ಟಿ ಸಿದ್ಧವಾಗಿದೆ.");
   document.querySelector("#answer-form").classList.toggle("hidden", !question);
+  document.querySelector("#voice-note").classList.toggle("hidden", !question);
   document.querySelector("#mic-button").disabled = !question || !state.sarvamAvailable;
   document.querySelector("#voice-note").textContent = state.sarvamAvailable
-    ? "Hold the microphone button while you speak. Typed answers use the same extraction path."
-    : "Voice needs SARVAM_API_KEY. The typed interview and checklist still work.";
+    ? "Hold the microphone to speak, or type your reply."
+    : "Type your reply to continue.";
   renderDocuments();
+  requestAnimationFrame(() => {
+    const messages = document.querySelector("#messages");
+    messages.scrollTop = messages.scrollHeight;
+  });
 }
 
 function renderDocuments() {
@@ -291,8 +330,7 @@ async function warmUpAudio() {
       return true;
     } catch (error) {
       console.log("Microphone unavailable", error);
-      document.querySelector("#mic-status").textContent =
-        "Microphone unavailable. Type the answer below.";
+      setMicStatus("Microphone unavailable. Type the answer below.");
       warmUpPromise = null;
       return false;
     }
@@ -322,6 +360,16 @@ function flushPendingPcm() {
 
 function setMicStatus(message) {
   document.querySelector("#mic-status").textContent = message;
+  document.querySelector("#voice-feedback").classList.toggle("hidden", !message);
+}
+
+function setMicRecording(active) {
+  const button = document.querySelector("#mic-button");
+  button.setAttribute("aria-label", active ? "Release to send" : "Hold to speak");
+  button.setAttribute("title", active ? "Release to send" : "Hold to speak");
+  button.classList.toggle("bg-indigo", active);
+  button.classList.toggle("text-sheet", active);
+  button.classList.toggle("text-indigo", !active);
 }
 
 async function startRecording() {
@@ -346,7 +394,7 @@ async function startRecording() {
   stopRequested = false;
   recording = true;
   send({ type: "stt_start", questionId: state.question.id });
-  document.querySelector("#mic-button").textContent = "Release to send";
+  setMicRecording(true);
   // Own this status locally. It used to be cleared only by the server's stt_ready,
   // so any hiccup on that round trip left "Preparing the microphone…" on screen
   // while recording was in fact already running.
@@ -356,7 +404,7 @@ async function startRecording() {
 function stopRecording() {
   if (!micPressed && !recording) return;
   micPressed = false;
-  document.querySelector("#mic-button").textContent = "Hold to speak";
+  setMicRecording(false);
   // Cancelled before capture began; startRecording reports readiness once the
   // pending warm-up resolves.
   if (!recording) return;
@@ -381,6 +429,13 @@ document.querySelector("#answer-form").addEventListener("submit", (event) => {
   send({ type: "typed_answer", text: value, questionId: state.question.id });
   input.value = "";
   document.querySelector("#live-transcript").textContent = "";
+  setMicStatus("Reading your answer…");
+});
+document.querySelector("#typed-answer").addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    document.querySelector("#answer-form").requestSubmit();
+  }
 });
 document.querySelector("#language").addEventListener("change", (event) => {
   send({ type: "set_language", language: event.target.value });
