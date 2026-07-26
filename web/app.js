@@ -12,6 +12,11 @@ let state = {
   profile: {}, claimSet: { gates: [], claims: [], cards: [] },
   transcript: [], language: "en-IN", question: null, provider: "sarvam",
   providers: { sarvam: false, openai: false }, voiceAvailable: false,
+  estateId: null,
+  documentStore: {
+    documents: [],
+    estateMap: { groups: [], missingDocuments: [], organizedDocuments: 0, reviewDocuments: 0 },
+  },
 };
 let socket;
 let recording = false;
@@ -28,6 +33,22 @@ let pendingPcm = [];
 // ~4s of 40ms chunks. Enough to cover any handshake; bounded so a stuck socket
 // cannot grow this without limit.
 const MAX_PENDING_CHUNKS = 100;
+const ESTATE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function estateId() {
+  const url = new URL(location.href);
+  const fromUrl = url.searchParams.get("estate");
+  if (ESTATE_ID.test(fromUrl ?? "")) {
+    localStorage.setItem("virasat-estate-id", fromUrl);
+    return fromUrl;
+  }
+  const stored = localStorage.getItem("virasat-estate-id");
+  const id = ESTATE_ID.test(stored ?? "") ? stored : crypto.randomUUID();
+  localStorage.setItem("virasat-estate-id", id);
+  url.searchParams.set("estate", id);
+  history.replaceState(null, "", url);
+  return id;
+}
 
 function text(value) {
   return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;")
@@ -40,7 +61,7 @@ function send(message) {
 
 function connect() {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  socket = new WebSocket(`${protocol}//${location.host}/ws`);
+  socket = new WebSocket(`${protocol}//${location.host}/ws?estate=${encodeURIComponent(estateId())}`);
   socket.binaryType = "arraybuffer";
   socket.addEventListener("open", () => {
     send({ type: "start", language: document.querySelector("#language").value });
@@ -209,6 +230,34 @@ function renderAncillary() {
   const shares = document.querySelector("#shares-note");
   shares.classList.toggle("hidden", !state.claimSet.sharesNote || !(state.claimSet.claims ?? []).length);
   shares.textContent = state.claimSet.sharesNote ?? "";
+  renderEstateMap();
+}
+
+function renderEstateMap() {
+  const map = state.documentStore?.estateMap ?? { groups: [], missingDocuments: [] };
+  const host = document.querySelector("#estate-map");
+  if (!map.groups.length) {
+    host.innerHTML = "";
+    return;
+  }
+  host.innerHTML = `<div class="border-b border-rule bg-paper px-7 py-4">
+    <div class="flex items-baseline justify-between gap-5">
+      <h3 class="text-[15px] font-medium text-ink">The estate at a glance</h3>
+      <p class="tnum text-[13px] text-ink2">${map.missingDocuments.length} documents still to confirm</p>
+    </div>
+    <div class="mt-3 grid grid-cols-2 gap-x-6 gap-y-3">${map.groups.map((group) => {
+      const complete = group.requiredDocuments
+        ? Math.round((group.heldDocuments / group.requiredDocuments) * 100)
+        : 100;
+      return `<div>
+        <div class="flex items-baseline justify-between gap-3 text-[14px]">
+          <span class="font-medium text-indigo">${text(group.title)}</span>
+          <span class="tnum text-ink2">${group.readyCount}/${group.claimCount} ready</span>
+        </div>
+        <div class="mt-1 h-[3px] bg-ruleSoft"><div class="h-[3px] bg-neem" style="width:${complete}%"></div></div>
+      </div>`;
+    }).join("")}</div>
+  </div>`;
 }
 
 function renderConversation() {
@@ -271,22 +320,57 @@ function renderConversation() {
 
 function renderDocuments() {
   const panel = document.querySelector("#document-panel");
-  const byId = new Map();
-  for (const claim of state.claimSet.claims ?? []) {
-    for (const document of claim.docsRequired ?? []) byId.set(document.id, document);
-  }
-  const documents = [...byId.values()];
-  panel.classList.toggle("hidden", state.question !== null || documents.length === 0);
-  if (state.question !== null || !documents.length) return;
+  const store = state.documentStore ?? { documents: [], estateMap: { missingDocuments: [] } };
+  const files = store.documents ?? [];
+  const missing = store.estateMap?.missingDocuments ?? [];
+  panel.classList.remove("hidden");
   panel.innerHTML = `<div class="border-t border-rule pt-5">
-    <h3 class="text-[17px] font-medium text-ink">Mark what you already have</h3>
-    <p class="mt-1 text-[15px] text-ink2">A missing document holds up filing, not the claim.</p>
-    <div class="mt-3">${documents.map((document) =>
-      `<label class="flex items-center gap-3 border-b border-ruleSoft py-[9px] text-[16px]">
-        <input class="h-[15px] w-[15px] accent-indigo" type="checkbox"
+    <div class="flex items-baseline justify-between gap-4">
+      <div>
+        <h3 class="text-[17px] font-medium text-ink">Document store</h3>
+        <p class="mt-1 text-[15px] text-ink2">Upload scans or PDFs. Virasat reads and files them against this estate.</p>
+      </div>
+      <span class="tnum text-[13px] text-ink2">${files.length} stored</span>
+    </div>
+    <form id="document-upload-form" class="mt-4 border border-dashed border-rule bg-sheet p-4">
+      <label class="block text-[15px] font-medium text-indigo" for="document-upload">Choose documents</label>
+      <input id="document-upload" class="mt-2 block w-full text-[14px] text-ink2"
+        type="file" name="documents" accept=".pdf,.png,.jpg,.jpeg,.txt,.md,.csv,.json" multiple required>
+      <div class="mt-3 flex items-center justify-between gap-4">
+        <p class="text-[13px] text-ink2">PDF, image or text · up to 10 files · 20 MB each</p>
+        <button class="bg-indigo px-4 py-2 text-[15px] font-medium text-sheet" type="submit">Parse and organize</button>
+      </div>
+      <p id="document-upload-status" class="mt-2 min-h-5 text-[14px] text-ink2"></p>
+      <p class="mt-1 text-[12px] leading-[1.45] text-ink2">Scans and PDFs are sent to Sarvam Vision when connected. Originals remain in this estate workspace.</p>
+    </form>
+    ${files.length ? `<div class="mt-4">
+      <h4 class="text-[14px] font-medium text-ink">Organized documents</h4>
+      ${files.map((file) => `<article class="border-b border-ruleSoft py-[9px]">
+        <div class="flex items-baseline justify-between gap-4">
+          <p class="text-[15px] font-medium ${file.status === "organized" ? "text-ink" : "text-ochreInk"}">${text(file.title)}</p>
+          <span class="text-[13px] ${file.status === "organized" ? "text-neem" : "text-ochreInk"}">${text(
+            file.status === "organized" ? "Filed" : file.status === "failed" ? "Could not read" : "Needs review",
+          )}</span>
+        </div>
+        <p class="text-[13px] text-ink2">${text(file.originalName)} · ${text(file.category)}</p>
+        ${file.error ? `<p class="mt-1 text-[13px] text-ochreInk">${text(file.error)}</p>` : ""}
+      </article>`).join("")}
+    </div>` : ""}
+    ${missing.length ? `<div class="mt-5">
+      <h4 class="text-[14px] font-medium text-ink">Documents still needed</h4>
+      <p class="mt-1 text-[13px] text-ink2">Absent and unconfirmed are kept separate.</p>
+      ${missing.map((document) => `<label class="flex items-start gap-3 border-b border-ruleSoft py-[9px]">
+        <input class="mt-1 h-[15px] w-[15px] accent-indigo" type="checkbox"
           data-document-id="${text(document.id)}" ${document.have === "yes" ? "checked" : ""}>
-        <span>${text(document.label)}</span></label>`
-    ).join("")}</div></div>`;
+        <span class="min-w-0">
+          <span class="block text-[15px]">${text(document.label)}</span>
+          <span class="block text-[13px] ${document.have === "no" ? "text-ochreInk" : "text-ink2"}">${
+            document.have === "no" ? "Still to get" : "Not yet confirmed"
+          } · needed for ${document.neededFor.length} ${document.neededFor.length === 1 ? "claim" : "claims"}</span>
+        </span>
+      </label>`).join("")}
+    </div>` : ""}
+  </div>`;
   panel.querySelectorAll("[data-document-id]").forEach((input) => {
     input.addEventListener("change", () => send({
       type: "set_document",
@@ -294,6 +378,35 @@ function renderDocuments() {
       status: input.checked ? "yes" : "no",
     }));
   });
+  document.querySelector("#document-upload-form").addEventListener("submit", uploadDocuments);
+}
+
+async function uploadDocuments(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const input = form.querySelector("#document-upload");
+  const files = [...input.files];
+  if (!files.length) return;
+  const status = form.querySelector("#document-upload-status");
+  const button = form.querySelector("button");
+  button.disabled = true;
+  status.textContent = `Reading ${files.length} ${files.length === 1 ? "document" : "documents"}…`;
+  const body = new FormData();
+  for (const file of files) body.append("documents", file);
+  body.append("language", state.language);
+  try {
+    const response = await fetch(`/api/documents?estate=${encodeURIComponent(estateId())}`, {
+      method: "POST",
+      body,
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? "Documents could not be read.");
+    state = { ...state, ...result };
+    render();
+  } catch (error) {
+    status.textContent = error instanceof Error ? error.message : "Documents could not be read.";
+    button.disabled = false;
+  }
 }
 
 function render() {
