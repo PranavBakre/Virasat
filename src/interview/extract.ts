@@ -29,6 +29,10 @@ const YES = [
   "had one", "has one", "with my", "with us", "got them", "have them",
   "ಹೌದು", "ಇದೆ", "ಇತ್ತು", "ಸರಿ", "हाँ", "हां",
 ];
+const EMPTY_HOLDING = [
+  "empty", "no holdings", "nothing in it", "zero balance",
+  "ಖಾಲಿ", "ಏನೂ ಇರಲಿಲ್ಲ", "खाली", "कुछ नहीं था",
+];
 
 const DIRECT_VALUES: Record<string, string[]> = {
   applied: ["applied", "application", "ಅರ್ಜಿ", "आवेदन"],
@@ -60,6 +64,11 @@ export function extractLocally(question: Question, transcript: string): string |
     const value = transcript.trim().replace(/\s+/gu, " ");
     return value.length <= (question.maxLength ?? 100) ? value : null;
   }
+  if (
+    question.id === "demat"
+    && question.values.includes("no")
+    && hasPhrase(normalized, EMPTY_HOLDING)
+  ) return "no";
   const exactValue = question.values.find(value => value.toLocaleLowerCase() === normalized);
   if (exactValue) return exactValue;
   if (question.values.includes("applied")
@@ -135,6 +144,14 @@ export function extractFastPath(question: Question, transcript: string): string 
   if (question.kind !== "enum") return null;
   const normalized = transcript.trim().toLocaleLowerCase();
   if (!normalized) return null;
+
+  // An empty demat account is not a transmissible holding. Treating “they had
+  // one, but it was empty” as yes creates a claim for an asset worth nothing.
+  if (
+    question.id === "demat"
+    && question.values.includes("no")
+    && hasPhrase(normalized, EMPTY_HOLDING)
+  ) return "no";
 
   const exact = question.values.find((value) => value.toLocaleLowerCase() === normalized);
   if (exact) return exact;

@@ -54,6 +54,12 @@ describe("deterministic extraction fallback", () => {
     expect(extractLocally(question("district"), "  Bengaluru   Urban ")).toBe("Bengaluru Urban");
     expect(extractLocally(question("district"), "x".repeat(81))).toBeNull();
   });
+  test("does not create a securities claim for an empty demat account", () => {
+    for (const answer of ["They did, but it was empty", "The account had no holdings"]) {
+      expect(extractFastPath(question("demat"), answer)).toBe("no");
+      expect(extractLocally(question("demat"), answer)).toBe("no");
+    }
+  });
 });
 
 describe("fast path — resolves ordinary answers with no model call", () => {

@@ -117,6 +117,79 @@ export function applyInferences(
     });
   }
 
+  if (
+    profile.postOfficeSchemes?.exists === "yes"
+    || profile.postOfficeSchemes?.exists === "unknown"
+  ) {
+    cards.push({
+      id: "post-office-scheme-track",
+      kind: "out-of-scope-track",
+      title: "Identify the post-office scheme",
+      body: "PPF, NSC, MIS and SCSS each use their own deceased-claim process. Check the passbook or certificate before choosing the filing route.",
+    });
+  }
+
+  if (profile.immovableProperty?.exists !== undefined
+    && profile.immovableProperty.exists !== "no") {
+    cards.push({
+      id: "property-mutation-track",
+      kind: "out-of-scope-track",
+      title: "House or land needs a mutation or khata route",
+      body: "Property transfer is separate from this movable-assets checklist. Start with the local revenue office, municipality or khata authority.",
+    });
+  }
+
+  if (profile.vehicle?.exists !== undefined && profile.vehicle.exists !== "no") {
+    cards.push({
+      id: "vehicle-transfer-track",
+      kind: "out-of-scope-track",
+      title: "Transfer the vehicle through the RTO",
+      body: "Vehicle ownership transfer follows the Karnataka RTO process and is separate from the claims listed above.",
+    });
+  }
+
+  if (profile.bankLocker?.exists !== undefined && profile.bankLocker.exists !== "no") {
+    cards.push({
+      id: "bank-locker-access-track",
+      kind: "out-of-scope-track",
+      title: "Ask the bank for the locker-access process",
+      body: "The branch must follow its deceased-locker inventory and access process. This checklist does not treat the locker contents as a monetary claim.",
+    });
+  }
+
+  if (profile.receivables !== undefined && profile.receivables !== "no") {
+    cards.push({
+      id: "receivables-certificate-track",
+      kind: "out-of-scope-track",
+      title: "List money owed to the estate",
+      body: "Debts and securities owed to the deceased may require a succession certificate. Record each debtor and the amount before approaching the civil court.",
+    });
+  }
+
+  if (profile.liabilities !== undefined && profile.liabilities !== "no") {
+    cards.push({
+      id: "liabilities-check",
+      kind: "warning",
+      title: "Check debts before distributing the estate",
+      body: "Loans and card balances do not disappear automatically. Check CIBIL, credit cards and running loans before distributing assets.",
+    });
+  }
+
+  const hasNoNominee = (profile.banks?.accounts ?? []).some(
+    (bank) => bank.nominee === "no",
+  ) || profile.insurance?.nominee === "no"
+    || profile.securities?.nominee === "no"
+    || profile.mutualFunds?.nominee === "no";
+
+  if (hasNoNominee) {
+    cards.push({
+      id: "add-your-own-nominees",
+      kind: "nudge",
+      title: "Add nominees to your own accounts",
+      body: "For your own bank, insurance and investment accounts, adding a nominee now can spare your family this route later.",
+    });
+  }
+
   // Rules table §1 row 6 and §8. `dormantOver10Years` existed on the type but
   // nothing read it, so a long-dormant account produced no pointer at all —
   // and money in the DEA fund is exactly the kind nobody thinks to look for.
