@@ -61,14 +61,11 @@ chat, Bulbul v3 TTS) · Tailwind CDN.
 
 ```bash
 bun install
-cp .env.example .env          # add your SARVAM_API_KEY
-
-bun run core                  # Iteration 0 — hardcoded profile → checklist
-bun run interview             # Iteration 1 — terminal voice loop
-bun run dev                   # Convex backend (second terminal)
+bun run web                   # Iteration 0 — scripted interview + live checklist
 ```
 
-Convex actions read the *deployment's* environment, not your shell's:
+Iteration 1 adds Sarvam voice and secondary text chat. At that point, copy
+`.env.example` to `.env` and set the key in the Convex deployment:
 
 ```bash
 bunx convex env set SARVAM_API_KEY sk_…
@@ -87,14 +84,12 @@ bunx convex env set SARVAM_API_KEY sk_…
 
 ## Status
 
-Pre-build. Docs and scope are locked; no implementation yet.
+Iteration 0 is in progress.
 
 | # | Iteration | Status |
 |---|---|---|
-| 0 | Claims engine — hardcoded profile → printed checklist | not started |
-| 1 | Voice interview (terminal) | not started |
-| 2 | Browser push-to-talk + live checklist | not started |
-| 3 | Missing-document coaching | stretch |
+| 0 | Web claims mockup — scripted interview + real checklist | in progress |
+| 1 | Voice interview with secondary text chat | not started |
 
 ## A caution
 

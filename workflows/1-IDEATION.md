@@ -39,39 +39,15 @@ missing.
 
 ## 2. Iteration 0 — the magic moment
 
-> **One sentence:** Run a script with a hardcoded family situation and it prints
-> every identified claim in virasat's current scope, where to file it, and which
-> documents they are still missing.
+> **One sentence:** Open one web page, advance through a scripted family
+> interview, and watch every identified in-scope claim and missing document
+> appear in a live checklist.
 
-- No UI. Terminal only. `bun run core.ts`.
-- No voice yet — the interview answers are a hardcoded object in the file.
+- One desktop HTML page. `bun run web`.
+- No voice yet — the interview progression is scripted in the browser.
+- Claim derivation is the real pure rules engine, not hardcoded output.
 - Proves the core idea: **the rules table is the product.** If the derivation is
-  right, everything else is packaging.
-- Target: 20 minutes.
-
-**Visible output when it runs:**
-
-```
-$ bun run core.ts
-
-VIRASAT — claims map for the estate of [deceased]
-
-  ✓ BANK — sole account, nominee registered
-      file at: branch where account is held
-      docs:    death certificate, claim form, nominee ID
-      missing: nothing — you can file today
-      note:    RBI 2025 bars the bank from demanding a succession certificate here
-
-  ✓ EPFO — provident fund + pension + EDLI insurance
-      file at: EPFO regional office / member portal
-      forms:   Form 20, Form 10D, Form 5IF
-      missing: joint photograph, cancelled cheque
-
-  ⚠ INSURANCE — policy details unknown
-      ...
-
-  4 claims found · 3 filable now · 1 blocked on documents
-```
+  right and visibly useful, the product works before voice is introduced.
 
 ---
 
@@ -80,9 +56,9 @@ VIRASAT — claims map for the estate of [deceased]
 | Signal | This project |
 |---|---|
 | User types | **One.** The person handling the estate. No admin, no institution login. |
-| Screens | **One** (Iteration 2). Talk button + live checklist. |
-| Data model | **One table** (`sessions`). Rules table is a TS constant, not data. |
-| Real-time | **No.** Push-to-talk. Convex's reactive query gives the live checklist for free — no websocket code. |
+| Screens | **One.** Scripted interview + live checklist. |
+| Data model | No database in Iteration 0; one `sessions` table in Iteration 1. |
+| Real-time | **No.** Local browser state in Iteration 0; Convex arrives with voice/chat. |
 | External APIs | **One vendor** — Sarvam (STT, chat, TTS). Single header auth. |
 | Input → output | Answers in → claims list out. Deterministic. |
 
@@ -118,13 +94,11 @@ Tailwind CDN, no build step.
 
 | # | Feature | Ships | Time |
 |---|---|---|---|
-| **0** | Claims engine — hardcoded answers → printed checklist | `core.ts`, `src/rules/` | 20 min |
-| **1** | Voice interview — Kannada/English speech in, spoken question back | `src/sarvam/`, `src/interview/` | ~1 hr |
-| **2** | Browser UI — push-to-talk, checklist fills in live as you answer | `web/` | ~1 hr |
-| **3** *(if time)* | Missing-document coaching — "you need X, here's where to get it" | polish | ~45 min |
+| **0** | Web claims mockup — scripted answers + real live checklist | `web/`, `src/rules/` | ~1 hr |
+| **1** | Voice interview with secondary text chat | Sarvam, Convex, `src/interview/` | ~1 hr |
 
-**Hard rule:** Iteration 0 must be printing a correct checklist before any
-Sarvam call is written. The demo is the checklist; voice is how you get there.
+**Hard rule:** Iteration 0 must be a complete visual demo backed by the real
+rules engine before any Sarvam call is written.
 
 ---
 

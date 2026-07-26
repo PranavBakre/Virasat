@@ -39,10 +39,8 @@ real demo. That property is the point of the ordering.
 
 | # | Ships | Doc |
 |---|---|---|
-| 0 | `bun run core` prints a checklist from a hardcoded profile | [Claims engine](features/iteration-0-claims-engine.md) |
-| 1 | Terminal voice loop — speak, get asked the next question aloud | [Voice interview](features/iteration-1-voice-interview.md) |
-| 2 | Browser push-to-talk, checklist fills in live | [Checklist UI](features/iteration-2-checklist-ui.md) |
-| 3 | Missing-document coaching | *stretch — cut without hesitation* |
+| 0 | Web mockup: scripted interview + real live checklist | [Web claims mockup](features/iteration-0-web-claims-mockup.md) |
+| 1 | Voice interview with secondary text chat | [Voice + chat](features/iteration-1-voice-chat.md) |
 
 ## Phase rules
 

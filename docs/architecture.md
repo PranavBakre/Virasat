@@ -176,7 +176,7 @@ type DocRequirement = {
   id: string;                    // "death-certificate", "legal-heir-certificate"
   label: string;
   have: YesNoUnknown;
-  whereToGet?: string;           // the coaching layer — Iteration 3
+  whereToGet?: string;           // later coaching layer
 };
 
 // Not a claim. Section 8 inferences and out-of-scope tracks produce these:
@@ -239,7 +239,9 @@ generic list.
 | `convex/schema.ts` | `sessions` table — one doc per interview | — |
 | `convex/sessions.ts` | `create`, `get`, `applyAnswer`, `setDocumentStatus` | `src/rules/` |
 | `convex/turn.ts` | `"use node"` action: audio → STT → extract → mutation | `src/sarvam/`, `src/interview/` |
-| `core.ts` | Iteration 0 entrypoint — hardcoded profile, printed checklist | `rules/` |
+| `web/serve.ts` | Iteration 0 static server + local derive endpoint | `rules/` |
+| `web/app.js` | Scripted demo state, document controls, render | local derive endpoint |
+| `web/index.html` | Virasat two-column demo surface | Tailwind CDN |
 
 **Dependency rule:** `src/rules/` imports nothing from `src/sarvam/` or
 `src/interview/`. The arrow points one way. This is what keeps the rules engine
@@ -313,7 +315,8 @@ thing that makes someone remember this product a year later.
 
 ## Convex
 
-Backend and database. One table, one action, two thin function files.
+Added in Iteration 1 for the real voice/chat interview. One table, one action,
+and two thin function files.
 
 ```ts
 // convex/schema.ts
@@ -345,9 +348,9 @@ correctness bug with legal consequences.
 
 **The dependency arrow is unchanged.** `src/rules/` imports nothing from
 `convex/`. Convex functions import the rules engine, call it, and return the
-result. The engine still runs in a plain `bun run core.ts` with no Convex
-deployment and no network — which is what keeps Iteration 0 shippable before any
-backend exists, and what keeps the rules unit-testable.
+result. In Iteration 0 the engine runs behind the local `web/serve.ts` endpoint
+with no Convex deployment and no network, which keeps the mockup shippable
+before any voice backend exists and keeps the rules unit-testable.
 
 `convex/turn.ts` needs `"use node"` at the top — audio buffers and the multipart
 upload to Sarvam need the Node runtime, not Convex's default V8 environment.
@@ -367,20 +370,18 @@ confidently wrong and never dead-ends.
 | Will exists | Route to the probate track and stop. Do not pretend to handle probate. |
 
 **The stage risk:** a venue mic and a live API are the two things that fail
-during a demo. The typed-input path is not a nicety — it is the thing that keeps
-the demo alive at 6:30 PM. Build it in Iteration 2 alongside the mic, not after.
+during a demo. Iteration 0 remains a complete scripted fallback. Iteration 1
+adds text chat alongside the microphone, through the same extraction path.
 
 ## Iteration map
 
 | # | Ships | Boundary added | Doc |
 |---|---|---|---|
-| 0 | `bun run core.ts` prints a checklist from a hardcoded profile | rules engine + table | [iteration-0-claims-engine.md](features/iteration-0-claims-engine.md) |
-| 1 | Terminal voice loop — speak, get asked the next question aloud | Sarvam clients + interview state | [iteration-1-voice-interview.md](features/iteration-1-voice-interview.md) |
-| 2 | Browser push-to-talk, checklist fills in live | HTTP surface + UI | [iteration-2-checklist-ui.md](features/iteration-2-checklist-ui.md) |
-| 3 | Missing-document coaching | `whereToGet` populated | *(stretch — only if 2 lands by 5pm)* |
+| 0 | Web mockup: scripted interview + live deterministic checklist | rules engine + web surface | [iteration-0-web-claims-mockup.md](features/iteration-0-web-claims-mockup.md) |
+| 1 | Voice interview with secondary text chat | Sarvam + interview state + Convex | [iteration-1-voice-chat.md](features/iteration-1-voice-chat.md) |
 
-Each iteration is independently demoable. If the day goes badly, Iteration 1 is
-still a real demo. That property is the point of the ordering.
+Each iteration is independently demoable. If voice or the venue network fails,
+Iteration 0 remains a complete visual walkthrough of the core product.
 
 ## Deliberately not built
 

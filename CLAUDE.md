@@ -57,9 +57,8 @@ indigo ink, Anek type by Ek Type, Kannada as a first-class script.
 | System design, data contracts, module boundaries | [docs/architecture.md](docs/architecture.md) |
 | **Which claims exist, what docs each needs, legal citations** | [docs/rules-table.md](docs/rules-table.md) |
 | Sarvam endpoints, headers, model names, params | [docs/sarvam-api.md](docs/sarvam-api.md) |
-| What Iteration 0 must do, and when it's done | [docs/features/iteration-0-claims-engine.md](docs/features/iteration-0-claims-engine.md) |
-| What Iteration 1 must do | [docs/features/iteration-1-voice-interview.md](docs/features/iteration-1-voice-interview.md) |
-| What Iteration 2 must do | [docs/features/iteration-2-checklist-ui.md](docs/features/iteration-2-checklist-ui.md) |
+| What Iteration 0 must do, and when it's done | [docs/features/iteration-0-web-claims-mockup.md](docs/features/iteration-0-web-claims-mockup.md) |
+| What Iteration 1 must do | [docs/features/iteration-1-voice-chat.md](docs/features/iteration-1-voice-chat.md) |
 
 ## The rule that overrides everything else
 
@@ -126,9 +125,8 @@ Someone may be using this within a week of a death.
 
 ```bash
 bun install
-bun run core          # Iteration 0 — hardcoded profile → printed checklist
-bun run interview     # Iteration 1 — terminal voice loop
-bun run dev           # Convex backend (keep in a second terminal)
+bun run web           # Iteration 0 — scripted interview + live checklist
+bun run dev           # Iteration 1 Convex backend
 bun run typecheck
 bun test
 ```
