@@ -80,8 +80,8 @@ VIRASAT — claims map for the estate of [deceased]
 |---|---|
 | User types | **One.** The person handling the estate. No admin, no institution login. |
 | Screens | **One** (Iteration 2). Talk button + live checklist. |
-| Data model | **Zero tables.** Rules table is a TS constant. Session is in memory. |
-| Real-time | **No.** Push-to-talk, request/response. |
+| Data model | **One table** (`sessions`). Rules table is a TS constant, not data. |
+| Real-time | **No.** Push-to-talk. Convex's reactive query gives the live checklist for free — no websocket code. |
 | External APIs | **One vendor** — Sarvam (STT, chat, TTS). Single header auth. |
 | Input → output | Answers in → claims list out. Deterministic. |
 
@@ -94,7 +94,7 @@ that look like features (accounts, saving, PDF export, more states).
 
 | Cut | Instead |
 |---|---|
-| User accounts / saving sessions | In-memory session. Refresh = start over. |
+| User accounts / login | Session id in the URL. Convex stores the session; no auth. |
 | All of India | **Karnataka only.** Hindu Succession Act intestate path. |
 | Will / probate track | Detect it, then stop: "you need the probate route, see a lawyer." |
 | Immovable property (land, flats) | Out. Movable assets only — that's what a succession certificate covers anyway. |
@@ -104,8 +104,12 @@ that look like features (accounts, saving, PDF export, more states).
 | Streaming voice / barge-in | Push-to-talk. One clip in, one clip out. |
 | Fine-tuned share arithmetic | Rules table returns claims and documents. Shares are a display note. |
 
-**Fake-it shortcuts in play:** rules table is a hardcoded TS array; no database;
-no auth; typed-input fallback always available if the mic fails on stage.
+**Fake-it shortcuts in play:** rules table is a hardcoded TS array; no auth
+(session id in the URL); typed-input fallback always available if the mic fails
+on stage.
+
+**Stack:** Bun + TypeScript · Convex (backend + DB) · Sarvam (STT/chat/TTS) ·
+Tailwind CDN, no build step.
 
 ---
 

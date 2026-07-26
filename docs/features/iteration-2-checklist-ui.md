@@ -16,29 +16,38 @@ about *appear on screen* while someone is still talking.
 
 | File | Contents |
 |---|---|
-| `server.ts` | Bun HTTP server — serves the page, hosts two routes |
-| `web/index.html` | Single page, inline Tailwind CDN, no build step |
-| `web/app.js` | MediaRecorder capture, fetch, render |
+| `convex/schema.ts` | `sessions` table |
+| `convex/sessions.ts` | `create` mutation, `get` query (runs `deriveClaims`), `applyAnswer` mutation |
+| `convex/turn.ts` | `"use node"` action: audio → STT → extract → `applyAnswer` → TTS |
+| `web/index.html` | Single page, Tailwind CDN, Convex browser client, no build step |
+| `web/app.js` | MediaRecorder capture, `client.action(...)`, render |
 
 Reuse `src/rules/`, `src/interview/`, `src/sarvam/` unchanged. If this iteration
 needs to modify the rules engine, something went wrong earlier.
 
-## Routes
+## Convex surface
 
+```ts
+sessions.create()                        → sessionId
+sessions.get({ sessionId })              → { profile, claims, cards, question }
+                                           ← subscription. this is what makes
+                                             the checklist live.
+sessions.applyAnswer({ sessionId, field, value })   ← the fallback path writes
+                                                      here directly
+turn({ sessionId, audio })               ← action: STT → extract → applyAnswer,
+                                             returns { questionAudio }
 ```
-POST /turn      body: audio blob (webm) + session id
-                → { question, questionAudio, profile, claims }
 
-POST /turn/text body: { text, sessionId }     ← the fallback path
-                → same shape
-```
+`sessions.get` calls `deriveClaims(profile)` on every read. Claims are never
+stored — see [architecture.md](../architecture.md#convex).
 
-Session state is a `Map<string, EstateProfile>` in server memory. No database.
-Refresh starts over, and that is an accepted, documented limitation.
+The client subscribes once and re-renders wholesale on each update. No diffing:
+it is an optimization with no demo value and real bug risk.
 
-Both routes return the **full** claim set every turn, not a diff. The client
-re-renders wholesale. Diffing is an optimization with no demo value and real
-bug risk.
+**The reactive query is why the demo works.** The action writes the answer; the
+subscription pushes the new claim set. Nothing in the UI code coordinates the
+two, so the checklist cannot fall out of sync with the profile — which is the
+bug that would be most visible and most embarrassing on stage.
 
 ## Layout
 
@@ -99,15 +108,21 @@ only — the demo is on a laptop.
 ## Build order
 
 1. **Static page with hardcoded claims JSON.** Get the layout right with fake
-   data, no server. ~15 min.
-2. **`POST /turn/text`.** Typed input working end to end. This is the fallback
-   *and* the fastest way to test the whole loop. ~15 min.
-3. **`POST /turn`.** MediaRecorder → webm blob → the same handler with STT in
-   front. ~20 min.
+   data, no backend. ~15 min.
+2. **Schema + `sessions.get` + `applyAnswer`, wired to the page.** Typed input
+   working end to end against Convex. This is the fallback *and* the fastest way
+   to prove the reactive render. ~15 min.
+3. **`convex/turn.ts` action.** MediaRecorder → webm → STT → the same
+   `applyAnswer` mutation. ~20 min.
 4. **Question audio playback.** Base64 from TTS → `Audio` element. ~10 min.
 
-Note step 2 before step 3: the typed path being first means the pipeline is
-proven before the mic is introduced, and the fallback can't be dropped for time.
+Note step 2 before step 3: the typed path being first means the whole pipeline —
+including the subscription that drives the live checklist — is proven before the
+mic is introduced, and the fallback can't be dropped for time.
+
+Run `bunx convex dev` in a second terminal for the whole iteration. Set
+`SARVAM_API_KEY` in the Convex dashboard, not just `.env` — actions read the
+deployment's environment, not your shell's.
 
 ## Done when
 
@@ -121,8 +136,7 @@ proven before the mic is introduced, and the fallback can't be dropped for time.
 ## Explicitly out
 
 - Mobile / responsive
-- Session persistence
-- Auth
+- Auth, accounts, session list
 - Streaming audio
 - PDF generation — print stylesheet only
 - Animations, loading skeletons, toasts

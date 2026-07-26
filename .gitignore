@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Convex generated client
+convex/_generated/
+
+# Recorded interview audio — may contain real family details about a real death.
+# Never commit. Keep only synthetic clips, and name them samples/demo-*.wav.
+samples/*.wav
+samples/*.webm
+samples/*.mp3
+!samples/demo-*.wav
+
+# Downloaded legal PDFs — large, and re-fetchable from docs/rules-table.md sources
+legal_sources/*.pdf
+
+# Scratch
+tmp/

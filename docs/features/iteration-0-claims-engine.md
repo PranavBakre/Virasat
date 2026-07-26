@@ -27,24 +27,32 @@ not.
 
 | File | Contents |
 |---|---|
-| `src/rules/types.ts` | `EstateProfile`, `Claim`, `ClaimSet` — copy from [architecture.md](../architecture.md#data-contracts) |
-| `src/rules/table.ts` | The rules table as a typed array — from [rules-table.md](../rules-table.md) |
+| `src/rules/types.ts` | `EstateProfile`, `Claim`, `Card`, `ClaimSet` — copy from [architecture.md](../architecture.md#data-contracts) |
+| `src/rules/table.ts` | Rules table §1–§4 as a typed array — from [rules-table.md](../rules-table.md) |
+| `src/rules/gates.ts` | §0 gates |
+| `src/rules/inferences.ts` | §8 — the layer that makes it feel intelligent |
 | `src/rules/engine.ts` | `deriveClaims(profile: EstateProfile): ClaimSet` |
 | `core.ts` | Hardcoded profile + `printChecklist()` |
 
 ## Build order
 
-1. **`types.ts`** — the three contracts, nothing else. 2 min.
-2. **`table.ts`** — start with **four** claim rows only: bank, EPFO PF, EPFO
-   EDLI, insurance. EDLI is the one that produces the demo's surprise, so it is
-   not optional. 8 min.
-3. **`engine.ts`** — gates first, then filter rows by profile, then compute
-   `status` and `blockedOn` from `docsRequired`. 6 min.
-4. **`core.ts`** — hardcoded profile, print. 4 min.
+1. **`types.ts`** — the contracts, nothing else. 2 min.
+2. **`gates.ts`** — §0. Four conditions, and the death-certificate early return.
+   Cheap, and it's what stops the engine emitting nonsense for a family that
+   can't act yet. 3 min.
+3. **`table.ts`** — start with **three** §1–§3 rows only: bank sole-with-nominee,
+   bank sole-no-nominee (≤15L), EPFO PF. 6 min.
+4. **`inferences.ts`** — just the `employed-at-death` rule, which alone adds
+   EDLI, EPS pension, and gratuity. **This is not optional and not deferrable:**
+   EDLI is the claim that produces the demo's surprise, and it exists only here.
+   4 min.
+5. **`engine.ts`** — gates → filter rows → apply inferences → compute `status`
+   and `blockedOn`. 3 min.
+6. **`core.ts`** — hardcoded profile, print. 2 min.
 
-Add the remaining claim rows (pension, demat, mutual funds, small savings,
-gratuity) only after the four-row version prints correctly. The table is
-append-only data; the engine does not change as rows are added.
+Add the remaining rows (insurance, pension, demat, mutual funds, small savings)
+and the remaining inference rules only after this version prints correctly. The
+table is append-only data; the engine does not change as rows are added.
 
 ## The hardcoded profile
 
