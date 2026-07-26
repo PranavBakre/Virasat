@@ -5,7 +5,11 @@ tailwind.config = {
   theme: {
     extend: {
       colors: {
-        paper: "#F1F0EA",
+        // Warmed from #F1F0EA on 26 Jul 2026. A grieving reader meets this ground
+        // first, and the cooler grey read as clinical. Contrast improved rather
+        // than regressed — a lighter ground lifts every dark ink on it. Worst
+        // pair (ochre) went 4.60 → 4.65. All seven still AA or better.
+        paper: "#F4F1E9",
         sheet: "#FBFAF7",
         rule: "#D5D2C8",
         ruleSoft: "#E4E1D8",

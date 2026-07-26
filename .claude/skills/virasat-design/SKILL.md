@@ -59,12 +59,48 @@ register — fewer words means they can be larger.
 Inverse of the app. The app is speech becoming record; the landing page makes you
 feel the **absence** of the record, then shows the register as the answer.
 
-- **The loose slips** are the signature device: six institution demands as
+### The greeting is not the pitch (26 Jul)
+
+The page used to open with *"Several institutions owe your family money. None will
+mention the others."* That is the strongest argument the product has and the wrong
+first sentence to show a spouse three weeks after a death — it opens on money.
+
+It now opens with **"You shouldn't have to work out who to call."** — acknowledge
+the burden, then offer to carry it. The institutions line was **not cut**; it leads
+the section that is *about* the problem, where an argument belongs.
+
+**The rule this encodes:** the first sentence acknowledges, the second offers, and
+the argument waits for section two. Warmth on this page comes from language, space
+and pace — never from softening the palette.
+
+### The voice is the primary action
+
+One control, and it is the microphone. Square, `bg-indigo`, generous padding, an
+inline mic glyph, label **"Talk to us"**, Kannada line beneath, and one quiet line
+offering to type instead — because a grieving person may not want to speak aloud.
+
+**It is a doorway, not a second microphone.** It navigates to `/app`, which already
+begins listening on load (`connect()` fires `{type:"start"}` on socket open). The
+audio pipeline — `getUserMedia` → `pcm-worklet` → `/ws` — stays in exactly one
+place. **Never build a second mic on the landing page**; two audio paths will drift
+and one of them will be broken on stage.
+
+The control is square because this system has no rounded surfaces. The glyph does
+the affording, not a pill shape.
+
+- **The loose slips** are the signature device: **four** institution demands as
   `bg-sheet` fragments on the `paper` ground, each rotated 0.6–1.6° via a static
-  `.slip-*` class. These are the actual pieces of paper a family is handed, lying
-  where they fall. Static transforms, not animation — `building.md` still bans
-  animation. This is the one place the page leaves the grid; everywhere else is
-  strict hairline alignment.
+  `.slip-*` class, in a **two-column** grid. These are the actual pieces of paper a
+  family is handed, lying where they fall. Static transforms, not animation —
+  `building.md` still bans animation. This is the one place the page leaves the
+  grid; everywhere else is strict hairline alignment.
+- **Four, not six, and two columns not three (26 Jul).** Six slips in a 3-wide grid
+  read as a pile of demands dumped on the reader before the page had offered any
+  help. The four kept each carry a distinct point: volume (bank annexures, EPFO
+  forms), a dependency (the legal heir certificate several others need first), and
+  the risk (succession certificate, months). Six `.slip-*` rotation classes remain
+  defined; four are in use. **Adding a fifth means dropping one** — the section's
+  job is to be understood, not to be exhaustive.
 - **Every slip is sourced.** The demands come from the rules table (Annex I-B/C/D/E
   from S1, Forms 20/10D/5IF from S4), not from invention. Do not add a slip for a
   requirement that has no row.
@@ -211,7 +247,7 @@ bias toward the accent, so they read as chosen rather than inherited.
 
 ```js
 tailwind.config = { theme: { extend: { colors: {
-  paper:      '#F1F0EA',  // ground — paper stock, grey-biased, NOT cream
+  paper:      '#F4F1E9',  // ground — paper stock. Warmed from #F1F0EA (26 Jul)
   sheet:      '#FBFAF7',  // the register sheet
   rule:       '#D5D2C8',  // hairline
   ruleSoft:   '#E4E1D8',  // inner hairline
@@ -230,17 +266,29 @@ tailwind.config = { theme: { extend: { colors: {
 Semantic colour (`neem` / `ochre` / `brick`) is deliberately separate from the
 accent (`indigo`) and does not count as it.
 
+**Still grey-biased, still not cream.** The 26 Jul warming moved `paper` two steps
+toward warm to stop the ground reading clinical to a grieving reader. It is a
+nudge, not a repalette — the instruction to stay off pastel, cream, and soft
+rounded surfaces is unchanged and is the thing that keeps this page from looking
+like every other AI-built wellness site.
+
 ### Measured contrast — do not re-estimate these
+
+Recomputed 26 Jul against the warmed `paper`. Warming a ground **raises** contrast
+against dark ink, so every pair improved; nothing needed reverting.
 
 | Token | on `paper` | on `sheet` |
 |---|---|---|
-| `ink` | 15.04 AAA | 16.46 AAA |
-| `indigo` | 10.78 AAA | 11.79 AAA |
-| `brick` | 7.07 AAA | 7.73 AAA |
-| `ink2` | 5.73 AA | 6.27 AA |
-| `neem` | 5.40 AA | 5.91 AA |
-| `terra` | 5.07 AA | 5.54 AA |
-| `ochre` | 4.60 AA | 5.03 AA |
+| `ink` | 15.22 AAA | 16.46 AAA |
+| `indigo` | 10.90 AAA | 11.79 AAA |
+| `brick` | 7.15 AAA | 7.73 AAA |
+| `ink2` | 5.80 AA | 6.27 AA |
+| `neem` | 5.46 AA | 5.91 AA |
+| `terra` | 5.13 AA | 5.54 AA |
+| `ochre` | 4.65 AA | 5.03 AA |
+
+If `paper` is ever changed again, **recompute all seven** — `ochre` is the binding
+constraint at 4.65 and has the least headroom above AA.
 
 `ochreInk` on `ochreTint` is 6.82:1. `sheet` on `indigo` (the button) is 11.79:1.
 
