@@ -10,8 +10,8 @@ checklist per claim: where to file, which documents are needed, what's missing.
 Built for the **Sarvam Epoch Buildathon**, Sunday 26 July, Razorpay Arena.
 Demos 6:30 PM IST. Selected Sarvam capability: **Voice Experience** (2.5×).
 
-**Stack:** Bun · TypeScript · Bun WebSocket server · Sarvam (Saaras v3 STT,
-Sarvam-30B chat, Bulbul v3 TTS) · Tailwind CDN, no build step.
+**Stack:** Bun · TypeScript · Bun WebSocket server · selectable Sarvam/OpenAI
+voice providers · Tailwind CDN, no build step.
 
 **Scope:** Karnataka · Hindu Succession Act intestate path · movable assets.
 
@@ -57,6 +57,7 @@ indigo ink, Anek type by Ek Type, Kannada as a first-class script.
 | System design, data contracts, module boundaries | [docs/architecture.md](docs/architecture.md) |
 | **Which claims exist, what docs each needs, legal citations** | [docs/rules-table.md](docs/rules-table.md) |
 | Sarvam endpoints, headers, model names, params | [docs/sarvam-api.md](docs/sarvam-api.md) |
+| OpenAI endpoints, models, and provider behavior | [docs/openai-api.md](docs/openai-api.md) |
 | What Iteration 0 must do, and when it's done | [docs/features/iteration-0-web-claims-mockup.md](docs/features/iteration-0-web-claims-mockup.md) |
 | What Iteration 1 must do | [docs/features/iteration-1-voice-chat.md](docs/features/iteration-1-voice-chat.md) |
 
@@ -74,7 +75,8 @@ Concretely:
 - `deriveClaims(profile)` is a **pure function**. No API key, no network, no
   model call. Same input, same output, always. If it ever needs a model, the
   design is wrong — stop and say so.
-- `src/rules/` imports nothing from `src/sarvam/`, `src/interview/`, or
+- `src/rules/` imports nothing from `src/sarvam/`, `src/openai/`,
+  `src/interview/`, or
   `convex/`. The arrow points one way.
 - Never write a claim, form number, document requirement, or timeline that isn't
   in the rules table. **If a rule is needed and isn't there, add it to
@@ -132,8 +134,9 @@ bun run typecheck
 bun test
 ```
 
-`SARVAM_API_KEY` goes in `.env` for the Bun server. It never reaches the
-browser. Without it, the typed interview and deterministic checklist still run.
+`SARVAM_API_KEY` and `OPENAI_API_KEY` go in `.env` for the Bun server. They
+never reach the browser. Without either, the typed interview and deterministic
+checklist still run.
 
 ## Checkpoints
 

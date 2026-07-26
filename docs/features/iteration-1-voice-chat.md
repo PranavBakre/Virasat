@@ -1,6 +1,6 @@
 # Iteration 1 — Voice interview with secondary chat
 
-> Status: **implemented; live Sarvam key verification pending**
+> Status: **implemented; live Sarvam and OpenAI key verification pending**
 > Depends on: [Iteration 0](iteration-0-web-claims-mockup.md)
 
 ## What it does
@@ -18,6 +18,11 @@ same extraction, profile, and rules engine.
 | `src/sarvam/stt.ts` | Streaming PCM16 audio to transcript |
 | `src/sarvam/tts.ts` | Stream authored questions as Bulbul v3 audio |
 | `src/sarvam/chat.ts` | Schema-constrained typed extraction |
+| `src/openai/config.ts` | Server-only OpenAI configuration and model defaults |
+| `src/openai/stt.ts` | Buffer PCM16 and send one WAV clip for transcription |
+| `src/openai/tts.ts` | Stream authored questions from the Speech API |
+| `src/openai/chat.ts` | Schema-constrained extraction with the Responses API |
+| `src/voice/config.ts` | Shared language and provider validation |
 | `src/interview/questions.ts` | Kannada/English question bank |
 | `src/interview/state.ts` | Pure conditional next-question selection |
 | `src/interview/extract.ts` | One transcript to one profile patch |
@@ -31,6 +36,9 @@ same extraction, profile, and rules engine.
   supplies the transcript directly.
 - Both paths extract exactly one field for the pending question.
 - `SARVAM_API_KEY` remains in Bun; the browser only sees the Virasat socket.
+- `OPENAI_API_KEY` follows the same server-only boundary.
+- The provider selector switches STT, extraction, and TTS as one unit without
+  resetting accumulated answers or derived claims.
 - Routing values are enum-constrained. Bank and nominee names are bounded
   display-only strings and never decide entitlement.
 - `"unclear"` re-asks once, then the text path remains available.
@@ -46,6 +54,7 @@ same extraction, profile, and rules engine.
 - [x] Voice and text use the same extraction/profile path
 - [x] Claims continue to appear mid-interview
 - [x] Sarvam failure leaves the text path and deterministic checklist usable
+- [x] Sarvam and OpenAI can be switched during the same interview session
 
 ## Explicitly out
 

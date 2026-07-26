@@ -32,7 +32,7 @@ never asked *which claims exist* or *which documents are required*.
 
 ```text
                      ┌──────────────────────────────┐
-  audio in  ────────►│  Sarvam STT (saaras:v3)      │
+  audio in  ────────►│  selected provider STT       │
                      └──────────────┬───────────────┘
                                     │ transcript
                      ┌──────────────▼───────────────┐
@@ -60,7 +60,7 @@ never asked *which claims exist* or *which documents are required*.
    └─────────────────────┘                   └──────────┬──────────┘
                                                         │ text
                                              ┌──────────▼──────────┐
-                                             │  Sarvam TTS         │
+                                             │  selected provider TTS │
                                              └─────────────────────┘
 ```
 
@@ -232,19 +232,23 @@ generic list.
 | `src/rules/types.ts` | The contracts above | nothing |
 | `src/interview/questions.ts` | Question bank, keyed to profile fields | `types.ts` |
 | `src/interview/state.ts` | `nextQuestion(profile) → Question \| null`. Pure. | `questions.ts`, `types.ts` |
-| `src/interview/extract.ts` | transcript + pending question → typed answer | `sarvam/chat.ts` |
+| `src/interview/extract.ts` | transcript + pending question → typed answer | selected provider extractor |
 | `src/sarvam/stt.ts` | Browser PCM chunks → streaming transcript | Sarvam SDK |
 | `src/sarvam/tts.ts` | Authored question → streamed audio chunks | Sarvam SDK |
 | `src/sarvam/chat.ts` | Constrained JSON completion | Sarvam API |
+| `src/openai/stt.ts` | Browser PCM clip → WAV transcription request | OpenAI SDK |
+| `src/openai/tts.ts` | Authored question → streamed audio chunks | OpenAI SDK |
+| `src/openai/chat.ts` | Constrained JSON response | OpenAI Responses API |
+| `src/voice/config.ts` | Shared language and provider enums | — |
 | `src/interview/protocol.ts` | Validated multiplexed WebSocket events | — |
-| `web/serve.ts` | Session state, Sarvam orchestration, static assets | rules + interview + Sarvam |
+| `web/serve.ts` | Session state, provider orchestration, static assets | rules + interview + Sarvam + OpenAI |
 | `web/app.js` | Voice/text interview, document controls, register render | one app WebSocket |
 | `web/index.html` | Virasat two-column demo surface | Tailwind CDN |
 
-**Dependency rule:** `src/rules/` imports nothing from `src/sarvam/` or
-`src/interview/`. The arrow points one way. This is what keeps the rules engine
-testable without an API key, and what lets Iteration 0 ship before any Sarvam
-integration exists.
+**Dependency rule:** `src/rules/` imports nothing from `src/sarvam/`,
+`src/openai/`, or `src/interview/`. The arrow points one way. This is what keeps
+the rules engine testable without an API key, and what lets Iteration 0 ship
+before any voice-provider integration exists.
 
 ## Question selection
 
@@ -335,7 +339,7 @@ confidently wrong and never dead-ends.
 |---|---|
 | STT returns low confidence | Re-ask once, in simpler words. Then offer typed input. |
 | Answer doesn't map to the enum | Keep the field `undefined`, move on, re-ask at the end. Never guess. |
-| Sarvam API down | Typed-input fallback stays live. The rules engine runs locally with no outbound calls — the checklist still works. |
+| Sarvam or OpenAI API down | Switch providers or use typed input. The rules engine runs locally with no outbound calls — the checklist still works. |
 | Claim row carries `[VERIFY]` | Render it, flagged amber, with the citation shown. Never silently drop it. |
 | Non-Hindu family | Claims and documents still render. Shares section is replaced with a lawyer referral. |
 | Will exists | Route to the probate track and stop. Do not pretend to handle probate. |

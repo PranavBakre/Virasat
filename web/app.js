@@ -10,7 +10,8 @@ const GROUPS = [
 
 let state = {
   profile: {}, claimSet: { gates: [], claims: [], cards: [] },
-  transcript: [], language: "en-IN", question: null, sarvamAvailable: false,
+  transcript: [], language: "en-IN", question: null, provider: "sarvam",
+  providers: { sarvam: false, openai: false }, voiceAvailable: false,
 };
 let socket;
 let recording = false;
@@ -256,10 +257,11 @@ function renderConversation() {
       : "ನಿಮ್ಮ ಹಕ್ಕುಗಳ ಪಟ್ಟಿ ಸಿದ್ಧವಾಗಿದೆ.");
   document.querySelector("#answer-form").classList.toggle("hidden", !question);
   document.querySelector("#voice-note").classList.toggle("hidden", !question);
-  document.querySelector("#mic-button").disabled = !question || !state.sarvamAvailable;
-  document.querySelector("#voice-note").textContent = state.sarvamAvailable
-    ? "Hold the microphone to speak, or type your reply."
-    : "Type your reply to continue.";
+  document.querySelector("#mic-button").disabled = !question || !state.voiceAvailable;
+  const providerName = state.provider === "openai" ? "OpenAI" : "Sarvam";
+  document.querySelector("#voice-note").textContent = state.voiceAvailable
+    ? `Using ${providerName}. Hold the microphone while you speak, or type your reply.`
+    : `${providerName} needs its API key. The typed interview and checklist still work.`;
   renderDocuments();
   requestAnimationFrame(() => {
     const messages = document.querySelector("#messages");
@@ -296,6 +298,14 @@ function renderDocuments() {
 
 function render() {
   document.querySelector("#language").value = state.language;
+  const provider = document.querySelector("#provider");
+  provider.value = state.provider;
+  for (const option of provider.options) {
+    const available = Boolean(state.providers?.[option.value]);
+    option.disabled = !available && option.value !== state.provider;
+    const name = option.value === "openai" ? "OpenAI" : "Sarvam";
+    option.textContent = `${name}${available ? "" : " · key missing"}`;
+  }
   renderConversation();
   renderRegister();
   renderAncillary();
@@ -338,10 +348,8 @@ async function warmUpAudio() {
   return warmUpPromise;
 }
 
-// The server discards binary frames while its Sarvam socket is still opening
-// (`if (!ws.data.stt) return`), and opening it is a full WebSocket handshake.
-// Hold audio here and flush once the socket confirms, instead of losing the
-// opening syllables of every answer.
+// Hold audio until the selected provider confirms it is ready. Sarvam may still
+// be opening its socket; OpenAI acknowledges immediately and receives one clip.
 function handlePcm(buffer) {
   if (!recording) return;
   if (!sttReady) {
@@ -439,6 +447,10 @@ document.querySelector("#typed-answer").addEventListener("keydown", (event) => {
 });
 document.querySelector("#language").addEventListener("change", (event) => {
   send({ type: "set_language", language: event.target.value });
+});
+document.querySelector("#provider").addEventListener("change", (event) => {
+  if (recording) stopRecording();
+  send({ type: "set_provider", provider: event.target.value });
 });
 document.querySelector("#reset-button").addEventListener("click", () => send({ type: "reset" }));
 const micButton = document.querySelector("#mic-button");

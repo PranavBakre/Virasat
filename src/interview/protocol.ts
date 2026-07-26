@@ -1,8 +1,14 @@
-import { isInterviewLanguage, type InterviewLanguage } from "../sarvam/config.ts";
+import {
+  isInterviewLanguage,
+  isVoiceProvider,
+  type InterviewLanguage,
+  type VoiceProvider,
+} from "../voice/config.ts";
 
 export type ClientMessage =
   | { type: "start"; language: InterviewLanguage }
   | { type: "set_language"; language: InterviewLanguage }
+  | { type: "set_provider"; provider: VoiceProvider }
   | { type: "typed_answer"; text: string; questionId: string }
   | { type: "stt_start"; questionId: string }
   | { type: "stt_stop" }
@@ -33,6 +39,9 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   if ((message.type === "start" || message.type === "set_language")
     && isInterviewLanguage(message.language)) {
     return { type: message.type, language: message.language };
+  }
+  if (message.type === "set_provider" && isVoiceProvider(message.provider)) {
+    return { type: "set_provider", provider: message.provider };
   }
   if (message.type === "typed_answer"
     && isShortString(message.text, 500) && isShortString(message.questionId, 80)) {

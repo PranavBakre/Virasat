@@ -14,10 +14,14 @@ describe("browser protocol validation", () => {
     )).toEqual({
       type: "set_document", documentId: "death-certificate", status: "yes",
     });
+    expect(parseClientMessage('{"type":"set_provider","provider":"openai"}')).toEqual({
+      type: "set_provider", provider: "openai",
+    });
   });
 
   test("rejects invalid languages, statuses and oversized messages", () => {
     expect(parseClientMessage('{"type":"start","language":"fr-FR"}')).toBeNull();
+    expect(parseClientMessage('{"type":"set_provider","provider":"other"}')).toBeNull();
     expect(parseClientMessage(
       '{"type":"set_document","documentId":"x","status":"maybe"}',
     )).toBeNull();

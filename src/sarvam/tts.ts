@@ -1,5 +1,5 @@
 import type { SarvamAIClient } from "sarvamai";
-import type { InterviewLanguage } from "./config.ts";
+import type { InterviewLanguage } from "../voice/config.ts";
 
 export async function* streamSpeech(
   client: SarvamAIClient,
