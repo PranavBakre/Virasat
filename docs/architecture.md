@@ -240,10 +240,14 @@ generic list.
 | `src/openai/tts.ts` | Authored question → streamed audio chunks | OpenAI SDK |
 | `src/openai/chat.ts` | Constrained JSON response | OpenAI Responses API |
 | `src/voice/config.ts` | Shared language and provider enums | — |
+| `src/voice/pcm.ts` | Provider-neutral PCM recording and WAV encoding | — |
 | `src/interview/protocol.ts` | Validated multiplexed WebSocket events | — |
 | `web/serve.ts` | Session state, provider orchestration, static assets | rules + interview + Sarvam + OpenAI |
 | `web/app.js` | Voice/text interview, document controls, register render | one app WebSocket |
 | `web/index.html` | Virasat two-column demo surface | Tailwind CDN |
+| `worker/index.ts` | Cloudflare asset aliases and WebSocket upgrade | Workers static assets |
+| `worker/session.ts` | Per-WebSocket interview state on Workers | rules + interview + Worker provider transports |
+| `worker/providers/` | Native Worker HTTP/WebSocket provider calls | Sarvam + OpenAI APIs |
 
 **Dependency rule:** `src/rules/` imports nothing from `src/sarvam/`,
 `src/openai/`, or `src/interview/`. The arrow points one way. This is what keeps

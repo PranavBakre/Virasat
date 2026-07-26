@@ -130,7 +130,10 @@ bun install
 bun run web           # / = landing · /app = voice/text interview
 bun run dev           # Same Bun server with hot reload
 bun run convex        # Reserved persistence backend (not in the Iteration 1 voice path)
+bun run dev:worker    # Cloudflare Workers runtime on localhost:8787
+bun run deploy:worker # Deploy static assets + Worker WebSocket
 bun run typecheck
+bun run typecheck:worker
 bun test
 ```
 
