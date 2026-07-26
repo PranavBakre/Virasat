@@ -1,4 +1,4 @@
-import type { BankAccount, EstateProfile } from "../rules/types.ts";
+import type { AmountBracket, BankAccount, EstateProfile } from "../rules/types.ts";
 import type { InterviewLanguage } from "../voice/config.ts";
 
 export type QuestionCopy = Record<InterviewLanguage, string>;
@@ -21,7 +21,11 @@ const ynu = ["yes", "no", "unknown"] as const;
 const copy = (kn: string, hi: string, en: string): QuestionCopy =>
   ({ "kn-IN": kn, "hi-IN": hi, "en-IN": en });
 const asset = (key: keyof EstateProfile) => (value: string) =>
-  ({ [key]: { exists: value } }) as Partial<EstateProfile>;
+  ({
+    [key]: key === "securities"
+      ? { exists: value, form: "demat" }
+      : { exists: value },
+  }) as Partial<EstateProfile>;
 const account = (profile: EstateProfile): BankAccount =>
   profile.banks?.accounts?.[0] ?? { id: "bank-1" };
 const bankPatch = (
@@ -162,6 +166,53 @@ for (const [id, key, label, questionCopy] of [
     patch: value => ({ [key]: value }) as Partial<EstateProfile>,
   });
 }
+
+questions.push(
+  {
+    id: "insurance-nominee", field: "insurance.nominee", label: "Insurance nominee",
+    copy: copy("ವಿಮಾ ಪಾಲಿಸಿಗೆ ನಾಮಿನಿ ಇದ್ದಾರೇ?", "क्या बीमा पॉलिसी में नॉमिनी है?", "Does the life-insurance policy have a nominee?"),
+    kind: "enum", values: ynu, answered: p => p.insurance?.nominee !== undefined,
+    applies: p => p.insurance?.exists === "yes",
+    patch: value => ({ insurance: { exists: "yes", nominee: value as "yes" | "no" | "unknown" } }),
+  },
+  {
+    id: "insurance-nominee-claimant", field: "insurance.nomineeIsClaimant", label: "Insurance claimant",
+    copy: copy("ಆ ನಾಮಿನಿ ನೀವೇನಾ?", "क्या वह नॉमिनी आप हैं?", "Are you the insurance nominee?"),
+    kind: "enum", values: ynu, answered: p => p.insurance?.nomineeIsClaimant !== undefined,
+    applies: p => p.insurance?.nominee === "yes",
+    patch: (value, p) => ({ insurance: { ...p.insurance!, nomineeIsClaimant: value as "yes" | "no" | "unknown" } }),
+  },
+  {
+    id: "securities-nominee", field: "securities.nominee", label: "Demat nominee",
+    copy: copy("ಡಿಮ್ಯಾಟ್ ಖಾತೆಗೆ ನಾಮಿನಿ ಇದ್ದಾರೇ?", "क्या डीमैट खाते में नॉमिनी है?", "Does the demat account have a nominee?"),
+    kind: "enum", values: ynu, answered: p => p.securities?.nominee !== undefined,
+    applies: p => p.securities?.exists === "yes",
+    patch: (value, p) => ({ securities: { ...p.securities!, nominee: value as "yes" | "no" | "unknown" } }),
+  },
+  {
+    id: "securities-amount", field: "securities.amountBracket", label: "Demat value",
+    copy: copy("ಡಿಮ್ಯಾಟ್ ಹೂಡಿಕೆಯ ಮೌಲ್ಯ ಸುಮಾರು ಎಷ್ಟು?", "डीमैट निवेश का मूल्य लगभग कितना है?", "What is the approximate value of the demat holdings?"),
+    kind: "enum", values: ["under-5L", "5L-15L", "over-15L", "unknown"],
+    answered: p => p.securities?.amountBracket !== undefined,
+    applies: p => p.securities?.exists === "yes" && p.securities.nominee !== "yes",
+    patch: (value, p) => ({ securities: { ...p.securities!, amountBracket: value as AmountBracket } }),
+  },
+  {
+    id: "mutual-funds-nominee", field: "mutualFunds.nominee", label: "Mutual-fund nominee",
+    copy: copy("ಮ್ಯೂಚುವಲ್ ಫಂಡ್‌ಗೆ ನಾಮಿನಿ ಇದ್ದಾರೇ?", "क्या म्यूचुअल फंड में नॉमिनी है?", "Do the mutual funds have a nominee?"),
+    kind: "enum", values: ynu, answered: p => p.mutualFunds?.nominee !== undefined,
+    applies: p => p.mutualFunds?.exists === "yes",
+    patch: (value, p) => ({ mutualFunds: { ...p.mutualFunds!, nominee: value as "yes" | "no" | "unknown" } }),
+  },
+  {
+    id: "mutual-funds-amount", field: "mutualFunds.amountBracket", label: "Mutual-fund value",
+    copy: copy("ಮ್ಯೂಚುವಲ್ ಫಂಡ್ ಹೂಡಿಕೆಯ ಮೌಲ್ಯ ಸುಮಾರು ಎಷ್ಟು?", "म्यूचुअल फंड निवेश का मूल्य लगभग कितना है?", "What is the approximate value of the mutual-fund holdings?"),
+    kind: "enum", values: ["under-5L", "5L-15L", "over-15L", "unknown"],
+    answered: p => p.mutualFunds?.amountBracket !== undefined,
+    applies: p => p.mutualFunds?.exists === "yes" && p.mutualFunds.nominee !== "yes",
+    patch: (value, p) => ({ mutualFunds: { ...p.mutualFunds!, amountBracket: value as AmountBracket } }),
+  },
+);
 
 export const QUESTIONS: readonly Question[] = questions;
 export function questionById(id: string): Question | undefined {

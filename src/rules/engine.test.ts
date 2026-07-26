@@ -338,4 +338,45 @@ describe("deriveClaims", () => {
       ),
     ).toBe(false);
   });
+
+  test("does not drop the positive answers from the reported retired-parent interview", () => {
+    const result = deriveClaims(makeProfile({
+      relationship: "son",
+      district: "Bengaluru Suburban",
+      employment: "retired",
+      epfo: { exists: "no" },
+      pension: { exists: "yes" },
+      banks: {
+        exists: "yes",
+        accounts: [{
+          id: "bank-1",
+          bankName: "Union Bank of India",
+          holding: "sole",
+          nominee: "yes",
+          nomineeName: "Nilima Bakre",
+        }],
+      },
+      postOfficeSchemes: { exists: "no" },
+      insurance: { exists: "yes", nominee: "yes", nomineeIsClaimant: "yes" },
+      securities: { exists: "no", form: "demat" },
+      mutualFunds: { exists: "yes", nominee: "yes" },
+      immovableProperty: { exists: "yes" },
+      vehicle: { exists: "yes" },
+      bankLocker: { exists: "yes" },
+      receivables: "no",
+      liabilities: "no",
+    }));
+
+    expect(result.claims.map((claim) => claim.id)).toEqual([
+      "bank-nominee",
+      "pension-family",
+      "insurance-nominee",
+      "mutual-funds-nominee",
+    ]);
+    expect(result.cards.map((card) => card.id)).toEqual([
+      "property-mutation-track",
+      "vehicle-transfer-track",
+      "bank-locker-access-track",
+    ]);
+  });
 });

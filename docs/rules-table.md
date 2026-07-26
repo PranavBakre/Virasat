@@ -112,8 +112,7 @@ certificate; it is never guessed downward.
 
 The threshold lives in the **rule**, not the type — same pattern as `bankType` +
 `amountBracket` for banks. `unknown` form takes the **stricter** ₹5 lakh ceiling,
-never guessed upward. **No §4 rule is implemented yet** — only the shape is
-correct, so nothing renders for securities today.
+never guessed upward.
 
 Interview must ask **which form** the holding is in, not just the value. Almost
 everything is demat; physical certificates mostly turn up in older estates.
@@ -276,11 +275,13 @@ an untranscribed row means a family is shown **nothing** for that asset:
 | 1 | sole, no nominee, above ceiling / unknown amount | `bank-no-nominee-succession-certificate` | ✅ |
 | 1 | dormant > 10 yrs | `bank-dormant-udgam` card | ✅ |
 | 3 | PF / EPS / EDLI / employer dues | `epfo-pf`, `epfo-eps`, `epfo-edli`, `employer-dues` | ✅ |
-| **2** | **life insurance — all four rows** | — | ❌ **not transcribed.** `insurance.exists === "yes"` yields no claim; only an `exists === "unknown"` discovery card exists |
-| **3** | **retired + receiving pension → family pension + arrears** | — | ❌ **not transcribed** |
+| 2 | life insurance — nominee and legal-heir routes | `insurance-nominee`, `insurance-legal-heirs` | ✅ |
+| **2** | **lost policy document route** | — | ❌ **not transcribed** |
+| 3 | retired + receiving pension → family pension + arrears | `pension-family` | ✅ |
 | **3** | **PF existence unknown → discovery card** | — | ❌ **not transcribed** |
-| **4** | **securities — all rows** | — | ❌ **not transcribed** (shape now correct, see §4) |
-| **8** | 6 of 11 inference rows | — | ❌ post-office track, no-nominee nudge, property/vehicle track, locker track, receivables track, liabilities card |
+| 4 | securities and mutual-fund transmission routes | `securities-*`, `mutual-funds-*` | ✅ |
+| 8 | post-office, nominee, property/vehicle, locker, receivables and liabilities cards | corresponding card ids in `inferences.ts` | ✅ |
+| **8** | **retired + 60 post-office prompt and PF-unknown discovery** | — | ❌ **not transcribed** |
 | **1** | joint **without** survivorship | — | ❌ no row in this table either — undefined behaviour, needs a decision |
 
 A regression test guards the implemented set: *"no known bank account is ever

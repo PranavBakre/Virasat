@@ -85,4 +85,25 @@ describe("question routing", () => {
     expect(applyQuestionAnswer({}, district, " Mysuru ").district).toBe("Mysuru");
     expect(() => applyQuestionAnswer({}, district, "x".repeat(81))).toThrow();
   });
+
+  test("collects routing details before completing positive asset answers", () => {
+    const profile: EstateProfile = {
+      deathCertificate: "yes", religion: "hindu", will: "no",
+      relationship: "son", district: "Bengaluru Suburban",
+      employment: "retired", pension: { exists: "yes" },
+      banks: { exists: "no" }, postOfficeSchemes: { exists: "no" },
+      insurance: { exists: "yes" }, securities: { exists: "no", form: "demat" },
+      mutualFunds: { exists: "yes" }, immovableProperty: { exists: "yes" },
+      vehicle: { exists: "yes" }, bankLocker: { exists: "yes" },
+      receivables: "no", liabilities: "no",
+    };
+
+    expect(nextQuestion(profile)?.id).toBe("insurance-nominee");
+    const insured = applyQuestionAnswer(
+      profile,
+      questionById("insurance-nominee")!,
+      "yes",
+    );
+    expect(nextQuestion(insured)?.id).toBe("insurance-nominee-claimant");
+  });
 });
