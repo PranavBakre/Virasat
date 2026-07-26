@@ -136,6 +136,96 @@ changes made. Section 1 in particular is now primary-source confirmed.
 
 ---
 
+---
+
+# Pass 2 — same day, code brought in line with the table
+
+## Attempted and failed: primary text for HSA
+
+**indiacode.nic.in is not machine-fetchable from this environment.** Both the
+handle page and two direct bitstream paths return **302 → JS-gated HTML**, not the
+PDF. `legal_sources/S2-…pdf` was **not** obtained.
+
+The exact URL for a human with a browser (30-second job):
+`https://www.indiacode.nic.in/bitstream/123456789/5519/1/hindu_succession_act,_1956.pdf`
+
+**Consequence:** the HSA `[VERIFY]` markers in sections 0 and 7 **stay open.** Two
+independent secondary sources did return **identical verbatim** text for s. 10's
+four rules, which raises confidence a long way but is not the primary read this
+repo's standard requires. Nothing was resolved on that basis.
+
+## Code fixes — all verified by running the suite
+
+`bun` was not installed on the machine; installed via brew (1.3.14) so the suite
+could actually be run rather than reasoned about. **19 pass, 0 fail. `tsc
+--noEmit` clean.**
+
+### 1. `src/rules/types.ts` — securities bracket had the wrong boundary
+
+`demat` and `mutualFunds` carried `valueBracket?: "under-5L" | "over-5L"`. ₹5 lakh
+is the **physical-certificate** ceiling; demat is **₹15 lakh**. Renamed `demat` →
+`securities`, added `SecuritiesForm = "demat" | "physical" | "unknown"`, and
+switched both to the shared `AmountBracket` — whose existing boundaries (₹5L,
+₹15L) are exactly the two ceilings, so no new bracket type was needed.
+
+Safe to rename because grep confirmed **nothing read these fields** — no rule, no
+inference, no interview step, no test. `web/app.js` GROUPS already matches
+`/^(demat|mutual|securities)/`, so the UI needed no edit.
+
+### 2. `src/rules/table.ts` — cooperative accounts were silently dropped (live bug)
+
+`bank-no-nominee-simplified` required `bankType === "commercial"`. A cooperative
+account with no nominee matched **no rule and no inference**, so the family saw
+**nothing at all** for it. Replaced with `withinSimplifiedCeiling()`: ₹15 lakh
+commercial, ₹5 lakh cooperative, and **stricter ceiling when the bank type is
+unknown** — never guessed downward, per the table's own instruction.
+
+### 3. `src/rules/table.ts` — two documented §1 rows had never been transcribed
+
+Both produced silent drops:
+
+- **`bank-joint-survivorship`** (§1 row 1) — a joint account with a survivorship
+  clause is the *easiest* route of the lot and rendered as nothing.
+- **`bank-no-nominee-succession-certificate`** (§1 row 4) — an account above the
+  ceiling, **or one whose balance nobody knows**, produced no claim. The family was
+  shown nothing for their largest account. Slow news beats silence, which reads as
+  "nothing to claim here."
+
+### 4. `src/rules/inferences.ts` — `dormantOver10Years` was never read
+
+Added the `bank-dormant-udgam` discovery card (§1 row 6, §8). The field existed on
+the type but nothing consumed it, so a long-dormant account produced no pointer to
+the DEA fund — money nobody thinks to look for.
+
+## Tests added, and confirmed to actually catch the bug
+
+Six new cases in `src/rules/engine.test.ts`, including a **6-case matrix** over
+bank type × amount bracket, an unknown-balance case, a joint-survivorship case, a
+dormant-card case, and the one that matters most:
+
+> **"no known bank account is ever silently dropped"** — for six differently
+> shaped accounts, asserts every `account.id` surfaces as an `assetRef` on at
+> least one claim.
+
+**Verified the guard is real, not decoration:** the pre-fix commercial-only
+condition was temporarily reintroduced and the suite **failed** on the cooperative
+case, then passed again once restored. A test that cannot fail proves nothing.
+
+## Deliberately NOT done
+
+**§2 life insurance, §3 retired-pension, §4 securities claims, and 6 of the 11 §8
+inference rows remain untranscribed.** Writing them is new feature work needing new
+profile fields and interview questions — `rules/building.md` forbids adding
+features outside the iteration plan, and unreviewed legal rules hours before a demo
+is the wrong trade. **They are now listed explicitly in the table's
+"How this file maps to code" section**, so the gap is visible instead of implicit.
+
+Also surfaced, no decision made: **a joint account without a survivorship clause
+has no row in the rules table at all.** Undefined behaviour, not just
+unimplemented. Needs a legal decision before code.
+
+---
+
 ## Follow-ups for whoever downloads the sources
 
 1. **S1 first** (unchanged advice) — confirms section 1 outright and its annexes

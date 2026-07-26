@@ -117,5 +117,22 @@ export function applyInferences(
     });
   }
 
+  // Rules table §1 row 6 and §8. `dormantOver10Years` existed on the type but
+  // nothing read it, so a long-dormant account produced no pointer at all —
+  // and money in the DEA fund is exactly the kind nobody thinks to look for.
+  const hasDormantAccount = (profile.banks?.accounts ?? []).some(
+    (account) => account.dormantOver10Years === "yes",
+  );
+
+  if (hasDormantAccount) {
+    cards.push({
+      id: "bank-dormant-udgam",
+      kind: "discovery",
+      title: "Search UDGAM for transferred balances",
+      body: "An account dormant for over ten years may have been moved to the RBI's Depositor Education and Awareness fund. Ask the branch first, then search UDGAM — the money is still claimable.",
+      link: "https://udgam.rbi.org.in",
+    });
+  }
+
   return { claims, cards };
 }

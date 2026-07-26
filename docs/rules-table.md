@@ -103,6 +103,21 @@ certificate; it is never guessed downward.
 > [VERIFY the 23 Jul 2026 circular number and its commencement date on sebi.gov.in
 > before this date passes — after 22 Aug 2026 this row becomes wrong.]
 
+**Profile shape this row needs** (`EstateProfile.securities` in `src/rules/types.ts`):
+
+| field | values | why |
+|---|---|---|
+| `form` | `"demat" \| "physical" \| "unknown"` | decides **which** ceiling applies — the amount alone cannot |
+| `amountBracket` | the shared `AmountBracket` | its boundaries (₹5L, ₹15L) are exactly the two ceilings |
+
+The threshold lives in the **rule**, not the type — same pattern as `bankType` +
+`amountBracket` for banks. `unknown` form takes the **stricter** ₹5 lakh ceiling,
+never guessed upward. **No §4 rule is implemented yet** — only the shape is
+correct, so nothing renders for securities today.
+
+Interview must ask **which form** the holding is in, not just the value. Almost
+everything is demat; physical certificates mostly turn up in older estates.
+
 ---
 
 ## 5. SUCCESSION CERTIFICATE & LEGAL HEIR CERTIFICATE (karnataka)
@@ -249,6 +264,28 @@ Download all into `legal_sources/` before building — verify `[VERIFY]` tags ag
 |---|---|
 | 0 | `evaluateGates()` in `src/rules/engine.ts` — runs before any claim routes |
 | 1–4 | `RULES` array in `src/rules/table.ts` — one entry per row |
+
+**Transcription status as of 26 Jul 2026** — the table is ahead of the code, and
+an untranscribed row means a family is shown **nothing** for that asset:
+
+| § | Row | Rule id | Status |
+|---|---|---|---|
+| 1 | joint + survivorship | `bank-joint-survivorship` | ✅ |
+| 1 | sole + nominee | `bank-nominee` | ✅ |
+| 1 | sole, no nominee, within ceiling | `bank-no-nominee-simplified` | ✅ ceiling is per bank type — ₹15L commercial, ₹5L cooperative, stricter if type unknown |
+| 1 | sole, no nominee, above ceiling / unknown amount | `bank-no-nominee-succession-certificate` | ✅ |
+| 1 | dormant > 10 yrs | `bank-dormant-udgam` card | ✅ |
+| 3 | PF / EPS / EDLI / employer dues | `epfo-pf`, `epfo-eps`, `epfo-edli`, `employer-dues` | ✅ |
+| **2** | **life insurance — all four rows** | — | ❌ **not transcribed.** `insurance.exists === "yes"` yields no claim; only an `exists === "unknown"` discovery card exists |
+| **3** | **retired + receiving pension → family pension + arrears** | — | ❌ **not transcribed** |
+| **3** | **PF existence unknown → discovery card** | — | ❌ **not transcribed** |
+| **4** | **securities — all rows** | — | ❌ **not transcribed** (shape now correct, see §4) |
+| **8** | 6 of 11 inference rows | — | ❌ post-office track, no-nominee nudge, property/vehicle track, locker track, receivables track, liabilities card |
+| **1** | joint **without** survivorship | — | ❌ no row in this table either — undefined behaviour, needs a decision |
+
+A regression test guards the implemented set: *"no known bank account is ever
+silently dropped"* in `src/rules/engine.test.ts` asserts every account the family
+named surfaces on at least one claim. **Extend it as §2 and §4 land.**
 | 5 | `Certificate` cards, referenced by `blockedOn` from rows in 1 and 4 |
 | 6 | `probateTrack()` — swaps the route set, does not extend it |
 | 7 | `sharesFor(profile)` — returns a spoken string, never a computation |

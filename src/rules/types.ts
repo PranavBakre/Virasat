@@ -10,6 +10,13 @@ export type AmountBracket =
   | "over-15L"
   | "unknown";
 
+// Securities have TWO simplified-transmission thresholds, not one: ₹15 lakh for
+// demat (per beneficial owner) and ₹5 lakh for physical certificates (per listed
+// company). So the form decides which threshold applies — the bracket alone
+// cannot. Keep the threshold logic in the rule, the way bankType does for banks.
+// docs/rules-table.md §4.
+export type SecuritiesForm = "demat" | "physical" | "unknown";
+
 export type BankAccount = {
   id: string;
   bankName?: string;
@@ -53,13 +60,18 @@ export type EstateProfile = {
     govtService?: YesNoUnknown;
     ppoAvailable?: YesNoUnknown;
   };
-  demat?: AssetAnswer & {
+  // Was `demat` with a valueBracket splitting at ₹5 lakh. That was wrong: ₹5 lakh
+  // is the PHYSICAL-certificate threshold; demat is ₹15 lakh. Renamed to
+  // `securities` because it now covers both forms, and switched to the shared
+  // AmountBracket, whose boundaries (5L, 15L) are exactly the two thresholds.
+  securities?: AssetAnswer & {
     nominee?: YesNoUnknown;
-    valueBracket?: "under-5L" | "over-5L" | "unknown";
+    form?: SecuritiesForm;
+    amountBracket?: AmountBracket;
   };
   mutualFunds?: AssetAnswer & {
     nominee?: YesNoUnknown;
-    valueBracket?: "under-5L" | "over-5L" | "unknown";
+    amountBracket?: AmountBracket;
   };
   postOfficeSchemes?: AssetAnswer & {
     schemes?: Array<"ppf" | "nsc" | "mis" | "scss" | "other">;
