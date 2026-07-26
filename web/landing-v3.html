@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virasat — you do not have to figure it out alone</title>
+    <meta
+      name="description"
+      content="A quiet conversation to help families understand the financial claims that may exist after a death."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/tokens-v3.js"></script>
+    <style>
+      html { scroll-behavior: smooth; }
+      body {
+        background-color: #f7f4ee;
+        background-image:
+          url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E"),
+          linear-gradient(
+            180deg,
+            #f7f4ee 0%,
+            #e5eaf3 24%,
+            #edf0f5 46%,
+            #d7e0ed 72%,
+            #f7f4ee 100%
+          );
+      }
+      .display-balance { text-wrap: balance; }
+      .section-rule { border-top: 1px solid rgba(29, 41, 81, 0.16); }
+      .fine-icon {
+        width: 28px;
+        height: 28px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.25;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .hero-art {
+        background:
+          linear-gradient(to right, #f7f4ee 0%, transparent 18%),
+          url("/v3-hero-paper-light.png") center / cover no-repeat;
+      }
+      .fade-link { transition: opacity 220ms ease; }
+      .fade-link:hover { opacity: 0.64; }
+      .reveal { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: no-preference) {
+        .reveal {
+          opacity: 0;
+          transform: translateY(14px);
+          transition:
+            opacity 900ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .reveal.is-visible { opacity: 1; transform: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+      }
+      :focus-visible {
+        outline: 2px solid #1d2951;
+        outline-offset: 4px;
+      }
+    </style>
+  </head>
+
+  <body class="font-sans text-[17px] leading-[1.7] text-navy antialiased">
+    <header class="mx-auto flex max-w-page items-center justify-between px-10 py-8">
+      <a href="/v3" class="font-display text-[30px] font-semibold tracking-[-0.02em]">
+        Virasat
+      </a>
+      <nav aria-label="Main navigation" class="flex items-center gap-9 text-[14px]">
+        <a class="fade-link" href="#how">How it works</a>
+        <a class="fade-link" href="#privacy">Privacy</a>
+        <a
+          class="fade-link bg-navy px-6 py-3 text-[14px] font-medium text-ivory"
+          href="/app"
+        >
+          Start conversation&nbsp; →
+        </a>
+      </nav>
+    </header>
+
+    <main>
+      <section
+        class="mx-auto grid min-h-[calc(100vh-112px)] max-w-page grid-cols-[0.94fr_1.06fr] items-center gap-10 px-10 pb-16"
+      >
+        <div class="reveal z-10 py-14">
+          <p class="mb-8 text-[13px] font-medium uppercase tracking-[0.12em] text-muted">
+            A quiet place to begin
+          </p>
+          <h1
+            class="display-balance max-w-[11ch] font-display text-[78px] font-medium leading-[0.94] tracking-[-0.035em]"
+          >
+            Find what your family may be entitled to.
+          </h1>
+          <p class="mt-9 max-w-[29rem] text-[18px] leading-[1.7] text-muted">
+            Families miss insurance, pensions and deposits because nobody tells
+            them those claims exist.
+          </p>
+          <p class="mt-5 max-w-[29rem] text-[18px] leading-[1.7] text-muted">
+            Tell us about your loved one. We’ll help you understand what to look
+            for, one step at a time.
+          </p>
+          <a
+            href="/app"
+            class="fade-link mt-10 inline-flex items-center gap-4 bg-navy px-8 py-[17px] font-medium text-ivory"
+          >
+            <svg width="17" height="20" viewBox="0 0 17 20" fill="none" aria-hidden="true">
+              <rect x="5.5" y="1" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.4" />
+              <path d="M2 9.8a6.5 6.5 0 0 0 13 0M8.5 16.3V19" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+            Talk to Virasat
+          </a>
+          <p class="mt-7 max-w-[28ch] text-[13px] leading-[1.8] text-muted">
+            Private. No sign-in. No documents required.
+          </p>
+        </div>
+
+        <figure
+          class="hero-art reveal min-h-[690px] w-full"
+          aria-label="Painted paper slips becoming a trail of warm light and stars"
+        ></figure>
+      </section>
+
+      <section class="mx-auto max-w-page px-10 py-12">
+        <div class="section-rule grid grid-cols-3 gap-16 pt-12">
+          <div class="reveal">
+            <p class="whitespace-nowrap font-display text-[46px] leading-none">₹78,000 crore</p>
+            <p class="mt-5 max-w-[16rem] text-[15px] leading-[1.6] text-muted">
+              Unclaimed deposits in India
+            </p>
+          </div>
+          <div class="reveal">
+            <p class="whitespace-nowrap font-display text-[46px] font-medium leading-none">Millions</p>
+            <p class="mt-5 max-w-[16rem] text-[15px] leading-[1.6] text-muted">
+              Insurance and financial claims remain unclaimed
+            </p>
+          </div>
+          <div class="reveal">
+            <p class="whitespace-nowrap font-display text-[46px] font-medium leading-none">5 minutes</p>
+            <p class="mt-5 max-w-[17rem] text-[15px] leading-[1.6] text-muted">
+              To understand what your family may be entitled to
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="how" class="mx-auto max-w-page px-10 py-16">
+        <div class="reveal max-w-[48rem]">
+          <p class="text-[13px] uppercase tracking-[0.12em] text-muted">How it works</p>
+          <h2 class="mt-6 font-display text-[64px] font-medium leading-[1] tracking-[-0.025em]">
+            A little clarity,<br />one step at a time.
+          </h2>
+        </div>
+        <ol class="relative mt-12 grid grid-cols-[1fr_50px_1fr_50px_1fr_50px_1fr] items-start border border-navy/10 bg-ivory/70 px-8 py-10 shadow-[0_24px_80px_rgba(29,41,81,0.08)]">
+          <li class="reveal">
+            <span class="font-display text-[25px] text-muted">01</span>
+            <p class="mt-7 max-w-[11ch] font-display text-[32px] leading-[1.05]">
+              Tell us about your loved one
+            </p>
+          </li>
+          <li aria-hidden="true" class="reveal pt-16 text-center text-[24px] text-accent">→</li>
+          <li class="reveal">
+            <span class="font-display text-[25px] text-muted">02</span>
+            <p class="mt-7 max-w-[10ch] font-display text-[32px] leading-[1.05]">
+              We identify possible claims
+            </p>
+          </li>
+          <li aria-hidden="true" class="reveal pt-16 text-center text-[24px] text-accent">→</li>
+          <li class="reveal">
+            <span class="font-display text-[25px] text-muted">03</span>
+            <p class="mt-7 max-w-[11ch] font-display text-[32px] leading-[1.05]">
+              Receive a personal checklist
+            </p>
+          </li>
+          <li aria-hidden="true" class="reveal pt-16 text-center text-[24px] text-accent">→</li>
+          <li class="reveal">
+            <span class="font-display text-[25px] text-muted">04</span>
+            <p class="mt-7 max-w-[12ch] font-display text-[32px] leading-[1.05]">
+              Move at your own pace
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="register" class="mx-auto grid max-w-page grid-cols-[0.72fr_1.28fr] items-center gap-20 px-10 py-12">
+        <div class="reveal">
+          <p class="text-[13px] uppercase tracking-[0.12em] text-muted">
+            Your claims register
+          </p>
+          <h2 class="mt-7 max-w-[8ch] font-display text-[64px] leading-[0.98] tracking-[-0.025em]">
+            Everything in one place.
+          </h2>
+          <p class="mt-7 max-w-[24rem] text-[16px] leading-[1.65] text-muted">
+            A clear record of what may exist and what to do next.
+          </p>
+        </div>
+
+        <div class="reveal bg-navy p-9 text-ivory shadow-[0_30px_90px_rgba(29,41,81,0.18)]">
+          <div class="flex items-end justify-between gap-8 border-b border-white/20 pb-6">
+            <div>
+              <p class="text-[13px] text-white/60">Illustrative example</p>
+              <h3 class="mt-2 font-display text-[34px] leading-none">Possible claims</h3>
+            </div>
+            <p class="text-[13px] text-white/60">3 identified</p>
+          </div>
+
+          <table class="w-full border-collapse text-left">
+            <thead>
+              <tr class="border-b border-white/15 text-[12px] font-normal text-white/55">
+                <th class="py-4 pr-5 font-normal">Claim</th>
+                <th class="py-4 pr-5 font-normal">Next step</th>
+                <th class="py-4 text-right font-normal">Status</th>
+              </tr>
+            </thead>
+            <tbody class="text-[14px]">
+              <tr class="border-b border-white/15">
+                <td class="py-5 pr-5 font-medium">Bank deposits</td>
+                <td class="py-5 pr-5 text-white/65">Confirm nominee at the branch</td>
+                <td class="py-5 text-right text-white/65">Confirm details</td>
+              </tr>
+              <tr class="border-b border-white/15">
+                <td class="py-5 pr-5 font-medium">EPFO death insurance</td>
+                <td class="py-5 pr-5 text-white/65">Check with the last employer</td>
+                <td class="py-5 text-right text-[#E7C9A9]">Commonly missed</td>
+              </tr>
+              <tr>
+                <td class="py-5 pr-5 font-medium">Insurance policy</td>
+                <td class="py-5 pr-5 text-white/65">Contact the insurer</td>
+                <td class="py-5 text-right text-white/65">Confirm details</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p class="border-t border-white/15 pt-5 text-[12px] leading-[1.6] text-white/50">
+            Your register adapts as you answer. Guidance, not legal advice.
+          </p>
+        </div>
+      </section>
+
+      <section class="mx-auto grid max-w-page grid-cols-2 gap-20 px-10 py-16">
+        <div class="reveal">
+          <p class="text-[13px] uppercase tracking-[0.12em] text-muted">Why Virasat exists</p>
+          <h2
+            class="display-balance mt-7 max-w-[9ch] font-display text-[72px] font-medium leading-[0.96] tracking-[-0.03em]"
+          >
+            Nobody gives you the full picture.
+          </h2>
+        </div>
+        <div class="reveal self-end pb-2">
+          <div class="space-y-5 text-[20px] leading-[1.55] text-muted">
+            <p>Banks only know about bank accounts.</p>
+            <p>Insurance companies only know about insurance.</p>
+            <p>Government offices only know about government schemes.</p>
+          </div>
+          <p class="mt-12 max-w-[31rem] font-display text-[33px] leading-[1.25]">
+            Families are left connecting everything themselves. Virasat brings
+            it together in one place.
+          </p>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-page px-10 py-16">
+        <div class="reveal flex items-end justify-between gap-16">
+          <div>
+            <p class="text-[13px] uppercase tracking-[0.12em] text-muted">
+              What you may discover
+            </p>
+            <h2 class="mt-7 font-display text-[64px] font-medium leading-none tracking-[-0.025em]">
+              More may exist<br />than you were told.
+            </h2>
+          </div>
+          <p class="max-w-[25rem] text-[16px] text-muted">
+            One calm view across the institutions families usually have to visit separately.
+          </p>
+        </div>
+
+        <div class="section-rule mt-14 grid grid-cols-4">
+          <div class="reveal border-b border-line py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><path d="M3 11h22M5 11v10m6-10v10m6-10v10m6-10v10M3 23h22M14 4l11 5H3l11-5Z"/></svg>
+            <p class="mt-7">Bank deposits</p>
+          </div>
+          <div class="reveal border-b border-line py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 3 23 7v7c0 5-3.5 8.5-9 11-5.5-2.5-9-6-9-11V7l9-4Z"/><path d="m10 14 2.5 2.5L18.5 10"/></svg>
+            <p class="mt-7">Insurance policies</p>
+          </div>
+          <div class="reveal border-b border-line py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><rect x="4" y="6" width="20" height="16"/><path d="M8 11h12M8 16h7"/></svg>
+            <p class="mt-7">Fixed deposits</p>
+          </div>
+          <div class="reveal border-b border-line py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 24V12m6 12V7m6 17V15m6 9V4"/></svg>
+            <p class="mt-7">Provident Fund</p>
+          </div>
+          <div class="reveal py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="10"/><path d="M14 8v6l4 3"/></svg>
+            <p class="mt-7">Pension benefits</p>
+          </div>
+          <div class="reveal py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><path d="M4 22 10 15l5 4 9-12"/><path d="M18 7h6v6"/></svg>
+            <p class="mt-7">Investments</p>
+          </div>
+          <div class="reveal py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><path d="m3 13 11-9 11 9M6 11v13h16V11M11 24v-7h6v7"/></svg>
+            <p class="mt-7">Property records</p>
+          </div>
+          <div class="reveal py-9">
+            <svg class="fine-icon" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 4h18v20H5zM9 9h10M9 14h10M9 19h6"/></svg>
+            <p class="mt-7">Government schemes</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy" class="mx-auto max-w-page px-10 py-12">
+        <div class="section-rule reveal flex items-start gap-8 py-8">
+          <svg class="fine-icon mt-1 shrink-0" viewBox="0 0 28 28" aria-hidden="true">
+            <rect x="5" y="12" width="18" height="13" />
+            <path d="M9 12V8a5 5 0 0 1 10 0v4" />
+          </svg>
+          <div>
+            <h2 class="font-display text-[42px] font-medium leading-none">A private place to begin.</h2>
+            <p class="mt-6 max-w-[38rem] text-[17px] text-muted">
+              No account or sign-in. You don’t need to upload documents to understand
+              which claims may exist.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-page px-10 py-20 text-center">
+        <div class="reveal">
+          <h2
+            class="display-balance mx-auto max-w-[13ch] font-display text-[78px] font-medium leading-[0.96] tracking-[-0.03em]"
+          >
+            One conversation.<br />That’s all it takes.
+          </h2>
+          <p class="mx-auto mt-9 max-w-[31rem] text-[18px] text-muted">
+            We’ll help you understand what exists before you begin the paperwork.
+          </p>
+          <a
+            href="/app"
+            class="fade-link mt-11 inline-flex bg-navy px-9 py-[18px] font-medium text-ivory"
+          >
+            Talk to Virasat&nbsp; →
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="mx-auto flex max-w-page items-center justify-between border-t border-line px-10 py-10 text-[13px] text-muted">
+      <div class="flex items-baseline gap-5">
+        <span class="font-display text-[22px] font-semibold text-navy">Virasat</span>
+        <span>Made with care for families.</span>
+      </div>
+      <nav aria-label="Footer navigation" class="flex gap-8">
+        <a class="fade-link" href="/v3">About</a>
+        <a class="fade-link" href="#privacy">Privacy</a>
+        <a class="fade-link" href="mailto:hello@virasat.example">Contact</a>
+      </nav>
+    </footer>
+
+    <script>
+      // Reveal each section once, keeping the motion quiet and respecting the
+      // operating system's reduced-motion preference.
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        },
+        { threshold: 0.08 },
+      );
+      document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
+    </script>
+  </body>
+</html>

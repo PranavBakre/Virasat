@@ -83,6 +83,10 @@ const tokens = Bun.file(new URL("./tokens.js", import.meta.url));
 // the register system rather than replacing it so both can be compared.
 const landingV2 = Bun.file(new URL("./landing-v2.html", import.meta.url));
 const tokensV2 = Bun.file(new URL("./tokens-v2.js", import.meta.url));
+const landingV3 = Bun.file(new URL("./landing-v3.html", import.meta.url));
+const tokensV3 = Bun.file(new URL("./tokens-v3.js", import.meta.url));
+const heroV3 = Bun.file(new URL("./v3-hero.png", import.meta.url));
+const heroV3PaperLight = Bun.file(new URL("./v3-hero-paper-light.png", import.meta.url));
 
 const sarvamApiKey = getSarvamApiKey();
 const sarvam = sarvamApiKey ? createSarvamClient(sarvamApiKey) : null;
@@ -417,8 +421,24 @@ const server = Bun.serve<Session>({
       return new Response(tokensV2, { headers: { "Content-Type": "text/javascript" } });
     }
 
+    if (url.pathname === "/tokens-v3.js") {
+      return new Response(tokensV3, { headers: { "Content-Type": "text/javascript" } });
+    }
+
+    if (url.pathname === "/v3-hero.png") {
+      return new Response(heroV3, { headers: { "Content-Type": "image/png" } });
+    }
+
+    if (url.pathname === "/v3-hero-paper-light.png") {
+      return new Response(heroV3PaperLight, { headers: { "Content-Type": "image/png" } });
+    }
+
     if (url.pathname === "/v2") {
       return new Response(landingV2, { headers: { "Content-Type": "text/html" } });
+    }
+
+    if (url.pathname === "/v3") {
+      return new Response(landingV3, { headers: { "Content-Type": "text/html" } });
     }
 
     // The interview lives at /app. The landing page owns the root so the demo can
