@@ -1,9 +1,34 @@
 import type { Question } from "./questions.ts";
 import type { VoiceProvider } from "../voice/config.ts";
 
-const YES = ["yes", "yeah", "correct", "ಹೌದು", "ಇದೆ", "ಇತ್ತು", "हाँ"];
-const NO = ["no", "not", "never", "ಇಲ್ಲ", "ಇರಲಿಲ್ಲ", "नहीं", "नही"];
-const UNKNOWN = ["don't know", "dont know", "not sure", "unsure", "ಗೊತ್ತಿಲ್ಲ", "पता नहीं", "मालूम नहीं"];
+// People do not answer "Do you have the death certificate?" with "yes". They say
+// "I do", "we got it last week", "it's with my brother". The model is the only
+// thing that can read the unusual ones, but sarvam-30b is a reasoning model that
+// measured 5–7.7s on every call — far too slow to sit in front of every answer.
+// So the closed set of ordinary affirmations and negations is enumerated here and
+// resolved with no network call at all.
+//
+// ORDER IS LOAD-BEARING. Unknown is tested before negative, because "no idea"
+// contains "no" and "ಗೊತ್ತಿಲ್ಲ" contains "ಇಲ್ಲ". Get that backwards and "I don't
+// know" is recorded as "no" — the exact collapse CLAUDE.md forbids, and the one
+// that silently drops a real entitlement.
+const UNKNOWN = [
+  "don't know", "dont know", "do not know", "no idea", "not sure", "unsure",
+  "can't say", "cant say", "cannot say", "not certain", "no clue",
+  "ಗೊತ್ತಿಲ್ಲ", "ತಿಳಿದಿಲ್ಲ", "पता नहीं", "पता नही", "मालूम नहीं",
+];
+const NO = [
+  "no", "nope", "not", "never", "not yet", "don't have", "dont have",
+  "do not have", "haven't", "havent", "have not", "not with", "lost it",
+  "ಇಲ್ಲ", "ಇರಲಿಲ್ಲ", "नहीं", "नही",
+];
+const YES = [
+  "yes", "yeah", "yep", "yup", "i do", "we do", "i have", "we have",
+  "i've got", "we've got", "got it", "have it", "with me", "in hand",
+  "correct", "right", "of course", "sure", "did have", "does have",
+  "had one", "has one", "with my", "with us", "got them", "have them",
+  "ಹೌದು", "ಇದೆ", "ಇತ್ತು", "ಸರಿ", "हाँ", "हां",
+];
 
 const DIRECT_VALUES: Record<string, string[]> = {
   applied: ["applied", "application", "ಅರ್ಜಿ", "आवेदन"],
@@ -40,8 +65,14 @@ export function extractLocally(question: Question, transcript: string): string |
   if (question.values.includes("applied")
     && DIRECT_VALUES.applied.some(term => normalized.includes(term))) return "applied";
 
-  if (question.values.includes("unknown") && hasPhrase(normalized, UNKNOWN)) return "unknown";
-  if (question.values.includes("unsure") && hasPhrase(normalized, UNKNOWN)) return "unsure";
+  // Same guard as the fast path: an unknown answer returns here rather than
+  // falling through to the "no" test below. "ಗೊತ್ತಿಲ್ಲ" contains "ಇಲ್ಲ", so
+  // without this the two are indistinguishable.
+  if (hasPhrase(normalized, UNKNOWN)) {
+    if (question.values.includes("unknown")) return "unknown";
+    if (question.values.includes("unsure")) return "unsure";
+    return null;
+  }
   if (question.values.includes("no") && hasPhrase(normalized, NO)) return "no";
   if (question.values.includes("yes") && hasPhrase(normalized, YES)) return "yes";
 
@@ -52,22 +83,49 @@ export function extractLocally(question: Question, transcript: string): string |
 }
 
 function hasPhrase(text: string, phrases: readonly string[]): boolean {
-  return phrases.some((phrase) => {
-    if (/^[a-z]{1,3}$/.test(phrase)) {
-      return new RegExp(`\\b${phrase}\\b`, "u").test(text);
-    }
-    return text.includes(phrase);
-  });
+  return phrases.some((phrase) => matchesPhrase(text, phrase));
+}
+
+// Every Latin phrase matches on word boundaries, not as a substring. Substring
+// matching reads "i do" out of "i don't have it" and "sure" out of "unsure",
+// inverting the answer. JS \w is ASCII-only, so \b is meaningless around Kannada
+// and Devanagari — those match as plain substrings, which is safe because their
+// negations are separate words rather than contractions.
+function matchesPhrase(text: string, phrase: string): boolean {
+  if (!/[a-z]/u.test(phrase)) return text.includes(phrase);
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`(?<![a-z])${escaped}(?![a-z'])`, "u").test(text);
 }
 
 // Beyond a few words an answer can carry a negation that flips its meaning
 // ("no, he did have an account"), and keyword matching gets that backwards.
 // Anything longer goes to the model.
-const MAX_FAST_PATH_WORDS = 3;
+//
+// This was 3, which is shorter than how people actually answer — "we got it last
+// week" and "I don't have it yet" both blew the cap and went to a model that then
+// lost its own race, so they surfaced as "I could not place that answer". The
+// contradiction test below is what really guards against late negation, so the cap
+// only has to be a backstop.
+const MAX_FAST_PATH_WORDS = 6;
+
+// Possession negated explicitly. These have to resolve before the yes/no
+// contradiction test, because "don't have it" legitimately contains both a
+// negative ("don't have") and an affirmative ("have it") — treating that as a
+// contradiction sent the commonest negative answer of all to the model.
+const NEGATED_POSSESSION = [
+  "don't have", "dont have", "do not have", "haven't", "havent", "have not",
+  "didn't have", "didnt have", "did not have", "not with", "no longer",
+  "never had", "not had",
+];
 
 // Ceiling on how long an answer may wait on the model before local matching takes
-// over. Set from measured behaviour, not guessed: 5.3s and 11.6s on real inputs.
-const EXTRACTION_TIMEOUT_MS = 2_500;
+// over. Measured sarvam-30b latencies are 5.0–7.7s, so the old 2.5s meant the
+// model never once won its own race — every answer paid the round trip and then
+// had its result thrown away. There is no faster chat model to switch to
+// (sarvam-m is deprecated; only sarvam-30b and sarvam-105b remain, both
+// reasoning models), so the deterministic path above absorbs the common answers
+// and this deadline is set wide enough for the model to actually finish the rest.
+const EXTRACTION_TIMEOUT_MS = 8_000;
 const TIMED_OUT = Symbol("extraction-timeout");
 
 // Resolves only answers that cannot be misread: an exact enum value, or a short
@@ -81,20 +139,37 @@ export function extractFastPath(question: Question, transcript: string): string 
   const exact = question.values.find((value) => value.toLocaleLowerCase() === normalized);
   if (exact) return exact;
 
-  if (normalized.split(/\s+/u).length > MAX_FAST_PATH_WORDS) return null;
-
-  const matches: string[] = [];
-  if (question.values.includes("unknown") && hasPhrase(normalized, UNKNOWN)) matches.push("unknown");
-  if (question.values.includes("unsure") && hasPhrase(normalized, UNKNOWN)) matches.push("unsure");
-  if (question.values.includes("no") && hasPhrase(normalized, NO)) matches.push("no");
-  if (question.values.includes("yes") && hasPhrase(normalized, YES)) matches.push("yes");
-  for (const value of question.values) {
-    if (matches.includes(value)) continue;
-    if (DIRECT_VALUES[value]?.some((term) => normalized.includes(term))) matches.push(value);
+  // "we applied for it" is neither yes nor no, and it outranks the "no" that
+  // usually sits beside it ("no certificate yet, but we applied already"). Tested
+  // ahead of the word cap because "applied" is unambiguous at any length.
+  if (question.values.includes("applied") && hasPhrase(normalized, DIRECT_VALUES.applied ?? [])) {
+    return "applied";
   }
 
-  // Two competing matches in a short answer is not confidence. Defer to the model.
-  return matches.length === 1 ? (matches[0] as string) : null;
+  if (normalized.split(/\s+/u).length > MAX_FAST_PATH_WORDS) return null;
+
+  if (question.values.includes("no") && hasPhrase(normalized, NEGATED_POSSESSION)) return "no";
+
+  // Tested before the negatives, and it returns rather than falling through:
+  // where the question offers no unknown value, defer to the model instead of
+  // letting "I don't know" land on "no".
+  if (hasPhrase(normalized, UNKNOWN)) {
+    if (question.values.includes("unknown")) return "unknown";
+    if (question.values.includes("unsure")) return "unsure";
+    return null;
+  }
+
+  const negative = question.values.includes("no") && hasPhrase(normalized, NO);
+  const affirmative = question.values.includes("yes") && hasPhrase(normalized, YES);
+  // A sentence carrying both is arguing with itself ("no, he did have one").
+  // That is precisely the case keyword matching gets backwards, so hand it over.
+  if (negative && affirmative) return null;
+  if (negative) return "no";
+  if (affirmative) return "yes";
+
+  const direct = question.values.filter((value) =>
+    value !== "applied" && DIRECT_VALUES[value]?.some((term) => matchesPhrase(normalized, term)));
+  return direct.length === 1 ? (direct[0] as string) : null;
 }
 
 export async function extractAnswer(

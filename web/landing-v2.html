@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Virasat — find what your family may be entitled to</title>
+    <meta
+      name="description"
+      content="Thousands of families miss out on insurance, pensions and bank deposits simply because nobody tells them those claims exist. Tell us about your loved one, and we'll help you understand what your family may be entitled to."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter:wght@400;500&family=Tiro+Kannada&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/tokens-v2.js"></script>
+    <style>
+      /* Optical sizing: Cormorant runs small and light, so display type needs
+         real size and a tighter measure to read as editorial rather than thin. */
+      .display { font-feature-settings: "liga" 1, "calt" 1; letter-spacing: -0.012em; }
+      .balance { text-wrap: balance; }
+      .tnum { font-variant-numeric: tabular-nums; }
+
+      /* Paper. A single very low-opacity fractal-noise tile, fixed so the whole
+         page feels printed on one sheet rather than tiled per section. */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.5;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)' opacity='0.05'/%3E%3C/svg%3E");
+      }
+      body > * { position: relative; z-index: 1; }
+
+      /* Slow, quiet entrance. Nothing bounces, nothing slides sideways. */
+      @media (prefers-reduced-motion: no-preference) {
+        .rise {
+          opacity: 0;
+          transform: translateY(16px);
+          transition: opacity 1.15s cubic-bezier(0.22, 0.61, 0.36, 1),
+            transform 1.15s cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        .rise.in { opacity: 1; transform: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rise { opacity: 1; transform: none; }
+        * { transition: none !important; animation: none !important; }
+      }
+
+      :focus-visible { outline: 2px solid #1d2951; outline-offset: 3px; }
+
+      /* Hairline that reads as a printed rule, not a UI border. */
+      .rule-t { border-top: 1px solid #e8e2d8; }
+    </style>
+  </head>
+
+  <body class="bg-bg font-sans text-[17px] leading-[1.65] text-primary antialiased">
+    <!-- ═══════════════ SVG DEFINITIONS ═══════════════
+         Watercolour is built from three filters, reused by every illustration:
+           #bleed  — turbulence + displacement, gives washes irregular soft edges
+           #soft   — plain blur, for haze and glow
+           #grain  — fine noise, so flat fills read as pigment on paper
+         All artwork below is hand-authored SVG, because no image generator was
+         available when this was built. To swap in real painted artwork, replace
+         the inline vector inside an "ILLUSTRATION" block with an image tag — the
+         surrounding layout does not care which it is. Keep the aria-label.
+    ═══════════════════════════════════════════════════ -->
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <defs>
+        <filter id="bleed" x="-25%" y="-25%" width="150%" height="150%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.014" numOctaves="4" seed="7" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="17" xChannelSelector="R" yChannelSelector="G" />
+          <feGaussianBlur stdDeviation="2.2" />
+        </filter>
+        <filter id="bleedSoft" x="-30%" y="-30%" width="160%" height="160%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="19" result="n" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="11" xChannelSelector="R" yChannelSelector="G" />
+          <feGaussianBlur stdDeviation="6" />
+        </filter>
+        <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="9" />
+        </filter>
+        <filter id="grain" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" result="n" />
+          <feColorMatrix in="n" type="saturate" values="0" result="d" />
+          <feComposite operator="in" in="d" in2="SourceGraphic" result="m" />
+          <feBlend in="SourceGraphic" in2="m" mode="multiply" />
+        </filter>
+
+        <!-- Night sky dissolving into dawn. Used inside the doorway. -->
+        <linearGradient id="dawn" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2A2F63" />
+          <stop offset="34%" stop-color="#4C4A82" />
+          <stop offset="62%" stop-color="#9C8AA0" />
+          <stop offset="82%" stop-color="#DFB98A" />
+          <stop offset="100%" stop-color="#F5E3C4" />
+        </linearGradient>
+        <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#161B3D" />
+          <stop offset="55%" stop-color="#2A2F63" />
+          <stop offset="100%" stop-color="#4A4478" />
+        </linearGradient>
+        <radialGradient id="glow" cx="50%" cy="78%" r="62%">
+          <stop offset="0%" stop-color="#F7DCA8" stop-opacity="0.95" />
+          <stop offset="55%" stop-color="#E7C79C" stop-opacity="0.35" />
+          <stop offset="100%" stop-color="#DCCFC1" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+    </svg>
+
+    <div class="mx-auto max-w-[1180px] px-10">
+      <!-- ═══════════════ NAVIGATION ═══════════════
+           Not sticky, by instruction. It scrolls away and does not come back. -->
+      <header class="flex items-start justify-between gap-10 pt-10">
+        <a href="/v2" class="block">
+          <p class="display text-[27px] font-medium leading-none text-primary">Virasat</p>
+          <p class="mt-[6px] font-kannada text-[15px] leading-none text-secondary">ವಿರಾಸತ್</p>
+        </a>
+        <nav class="flex items-center gap-9 pt-1">
+          <a href="#how" class="text-[15px] text-secondary transition-colors duration-500 hover:text-primary">How it works</a>
+          <a href="#privacy" class="text-[15px] text-secondary transition-colors duration-500 hover:text-primary">Privacy</a>
+          <a
+            href="/app"
+            class="rounded-[3px] bg-primary px-6 py-[11px] text-[15px] text-ivory transition-opacity duration-500 hover:opacity-80"
+          >
+            Start conversation&nbsp;→
+          </a>
+        </nav>
+      </header>
+
+      <!-- ═══════════════ HERO ═══════════════ -->
+      <section class="grid min-h-[86vh] grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)] items-center gap-20 pb-32 pt-24">
+        <div class="rise">
+          <h1 class="display balance max-w-[15ch] text-[74px] font-light leading-[1.06] text-primary">
+            Find what your family may be entitled to.
+          </h1>
+
+          <div class="mt-11 w-[54px] border-t border-accent"></div>
+
+          <p class="mt-10 max-w-[43ch] text-[17px] leading-[1.75] text-secondary">
+            Every year, thousands of families miss out on insurance, pensions,
+            bank deposits and financial benefits simply because nobody tells them
+            those claims exist.
+          </p>
+          <p class="mt-6 max-w-[43ch] text-[17px] leading-[1.75] text-primary">
+            Tell us about your loved one. We’ll help you understand everything
+            your family may be entitled to.
+          </p>
+
+          <a
+            href="/app"
+            class="mt-12 inline-flex items-center gap-[14px] rounded-[3px] bg-primary px-9 py-[19px] text-ivory transition-opacity duration-500 hover:opacity-80"
+          >
+            <!-- Voice, drawn as three quiet strokes rather than a microphone. -->
+            <svg width="17" height="15" viewBox="0 0 17 15" fill="none" aria-hidden="true">
+              <path d="M1 6.2v2.6M5 3.1v8.8M9 1v13M13 4.4v6.2M16.4 6.7v1.6"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <span class="text-[16.5px]">Talk to Virasat</span>
+          </a>
+
+          <p class="mt-7 flex items-center gap-[9px] text-[14px] text-secondary">
+            <svg width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
+              <rect x="1" y="5.6" width="10" height="7.6" rx="1.4" stroke="currentColor" stroke-width="1.1" />
+              <path d="M3.5 5.6V3.9a2.5 2.5 0 0 1 5 0v1.7" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+            </svg>
+            Private. Secure. No documents required.
+          </p>
+        </div>
+
+        <!-- ─────── ILLUSTRATION: a doorway opening into sunrise ───────
+             Symbolic, not literal. Night above, dawn at the threshold, and a
+             small figure who has not gone through yet. No religious imagery. -->
+        <div class="rise" style="transition-delay: 320ms">
+          <svg viewBox="0 0 560 700" class="h-auto w-full" role="img"
+               aria-label="A watercolour painting of a small figure standing before a tall doorway that opens onto a sunrise, beneath a fading night sky.">
+            <!-- washes behind the door, so it sits in air rather than on nothing -->
+            <g filter="url(#bleedSoft)" opacity="0.5">
+              <ellipse cx="300" cy="250" rx="215" ry="245" fill="#DCCFC1" opacity="0.55" />
+              <ellipse cx="360" cy="470" rx="185" ry="150" fill="#E7C79C" opacity="0.4" />
+              <ellipse cx="170" cy="410" rx="120" ry="140" fill="#C9C3D6" opacity="0.32" />
+            </g>
+
+            <!-- the doorway -->
+            <g filter="url(#bleed)">
+              <rect x="228" y="88" width="216" height="512" fill="url(#dawn)" />
+            </g>
+            <!-- warm light spilling out over the threshold -->
+            <g filter="url(#soft)" opacity="0.85">
+              <ellipse cx="336" cy="596" rx="196" ry="66" fill="url(#glow)" />
+            </g>
+            <!-- door frame, painted not drawn: two soft sand bands -->
+            <g filter="url(#bleed)" opacity="0.9">
+              <rect x="206" y="72" width="26" height="530" fill="#D3C3A8" />
+              <rect x="440" y="72" width="24" height="530" fill="#C9B79A" />
+              <rect x="206" y="72" width="258" height="24" fill="#DACBB2" />
+            </g>
+
+            <!-- stars, only in the upper third -->
+            <g fill="#FBF9F4">
+              <circle cx="268" cy="140" r="1.9" opacity="0.9" />
+              <circle cx="312" cy="186" r="1.4" opacity="0.7" />
+              <circle cx="356" cy="128" r="2.1" opacity="0.85" />
+              <circle cx="402" cy="196" r="1.5" opacity="0.6" />
+              <circle cx="290" cy="240" r="1.3" opacity="0.55" />
+              <circle cx="380" cy="262" r="1.7" opacity="0.5" />
+              <circle cx="420" cy="152" r="1.2" opacity="0.65" />
+              <circle cx="246" cy="206" r="1.4" opacity="0.5" />
+            </g>
+
+            <!-- the figure: a silhouette in ivory, no face, back to us -->
+            <g filter="url(#bleed)">
+              <path d="M196 600c-2-38 3-74 10-104 5-22 14-36 27-36s22 14 27 36c7 30 12 66 10 104z"
+                    fill="#FBF9F4" opacity="0.97" />
+              <circle cx="233" cy="440" r="19" fill="#F3EADC" />
+              <path d="M215 436c-1-14 7-24 18-24s19 10 18 24c-4-6-10-9-18-9s-14 3-18 9z" fill="#8C7F73" opacity="0.75" />
+            </g>
+
+            <!-- wildflowers at the threshold -->
+            <g stroke="#9AA88F" stroke-width="1.5" stroke-linecap="round" opacity="0.8" fill="none">
+              <path d="M470 600v-34M478 600v-24M462 600v-22M494 600v-28M502 600v-19" />
+              <path d="M186 600v-26M178 600v-18M170 600v-22" />
+            </g>
+            <g fill="#C3B2CE" opacity="0.85">
+              <circle cx="470" cy="563" r="3.1" /><circle cx="478" cy="574" r="2.4" />
+              <circle cx="462" cy="576" r="2.2" /><circle cx="494" cy="570" r="2.8" />
+              <circle cx="186" cy="571" r="2.6" /><circle cx="178" cy="580" r="2.1" />
+            </g>
+
+            <!-- floor: one long soft wash, grounding everything -->
+            <g filter="url(#bleedSoft)" opacity="0.42">
+              <rect x="60" y="596" width="470" height="20" fill="#C8BCAB" />
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <!-- ═══════════════ STATISTICS ═══════════════
+           No cards, no fills, no coloured backgrounds. Hairlines and air. -->
+      <section class="rule-t py-28">
+        <div class="grid grid-cols-3 gap-x-16">
+          <div class="rise">
+            <!-- Corrected from the brief's "₹1000+ crore". The real DEA Fund
+                 figure is ₹72,454 crore (RBI, Jan 2026) — understating it by 72×
+                 on a page whose whole argument is checkability would be the worst
+                 possible error to make. The true number is also more persuasive. -->
+            <p class="display tnum text-[46px] font-light leading-none text-primary">₹72,454 crore</p>
+            <p class="mt-5 max-w-[25ch] text-[15.5px] leading-[1.6] text-secondary">
+              Unclaimed deposits sitting with the Reserve Bank of India
+            </p>
+          </div>
+          <div class="rise" style="transition-delay: 130ms">
+            <p class="display text-[46px] font-light leading-none text-primary">Millions</p>
+            <p class="mt-5 max-w-[25ch] text-[15.5px] leading-[1.6] text-secondary">
+              Insurance and financial claims remain unclaimed
+            </p>
+          </div>
+          <div class="rise" style="transition-delay: 260ms">
+            <p class="display tnum text-[46px] font-light leading-none text-primary">5 minutes</p>
+            <p class="mt-5 max-w-[25ch] text-[15.5px] leading-[1.6] text-secondary">
+              To understand what your family may be entitled to
+            </p>
+          </div>
+        </div>
+
+        <!-- Sources, stated quietly. This page argues that nobody gives a family
+             the full picture; it cannot then assert numbers without saying where
+             they came from. Deliberately small — credibility, not decoration. -->
+        <p class="rise mt-16 max-w-[74ch] text-[13.5px] leading-[1.65] text-secondary" style="transition-delay: 380ms">
+          Depositor Education and Awareness Fund, Reserve Bank of India, January 2026.
+          Five minutes is how long the conversation takes, not how long a claim takes to settle.
+        </p>
+      </section>
+
+      <!-- ═══════════════ HOW IT WORKS ═══════════════ -->
+      <section id="how" class="rule-t py-32">
+        <h2 class="rise display balance max-w-[20ch] text-[44px] font-light leading-[1.15] text-primary">
+          How it works
+        </h2>
+        <div class="rise mt-8 w-[54px] border-t border-accent"></div>
+
+        <ol class="mt-20 grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-start gap-y-6">
+          <!-- 1 -->
+          <li class="rise">
+            <svg width="46" height="46" viewBox="0 0 46 46" fill="none" aria-hidden="true" class="text-primary">
+              <path d="M8 20.5C8 14 14 9 22 9s14 5 14 11.5S30 32 22 32h-5l-6 5v-7.5A11 11 0 0 1 8 20.5Z"
+                    stroke="currentColor" stroke-width="1.15" stroke-linejoin="round" />
+              <path d="M17 20.5h10M17 25h6" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" />
+            </svg>
+            <p class="tnum mt-7 text-[13px] text-secondary">1</p>
+            <p class="display mt-2 max-w-[15ch] text-[24px] font-normal leading-[1.25] text-primary">
+              Tell us about your loved one
+            </p>
+            <p class="mt-3 max-w-[24ch] text-[15px] leading-[1.6] text-secondary">
+              A few simple questions, spoken or typed.
+            </p>
+          </li>
+          <li aria-hidden="true" class="flex justify-center px-7 pt-[22px]">
+            <svg width="34" height="8" viewBox="0 0 34 8" fill="none" class="text-accent">
+              <path d="M0 4h32m-5-3.5L32.5 4 27 7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </li>
+          <!-- 2 -->
+          <li class="rise" style="transition-delay: 120ms">
+            <svg width="46" height="46" viewBox="0 0 46 46" fill="none" aria-hidden="true" class="text-primary">
+              <circle cx="21" cy="20" r="11.5" stroke="currentColor" stroke-width="1.15" />
+              <path d="M29.5 28.5 37 36" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" />
+              <path d="M16 20h10M21 15v10" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" />
+            </svg>
+            <p class="tnum mt-7 text-[13px] text-secondary">2</p>
+            <p class="display mt-2 max-w-[15ch] text-[24px] font-normal leading-[1.25] text-primary">
+              We’ll identify possible claims
+            </p>
+            <p class="mt-3 max-w-[24ch] text-[15px] leading-[1.6] text-secondary">
+              Across banks, insurers and government records.
+            </p>
+          </li>
+          <li aria-hidden="true" class="flex justify-center px-7 pt-[22px]">
+            <svg width="34" height="8" viewBox="0 0 34 8" fill="none" class="text-accent">
+              <path d="M0 4h32m-5-3.5L32.5 4 27 7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </li>
+          <!-- 3 -->
+          <li class="rise" style="transition-delay: 240ms">
+            <svg width="46" height="46" viewBox="0 0 46 46" fill="none" aria-hidden="true" class="text-primary">
+              <rect x="11" y="7" width="24" height="32" rx="2" stroke="currentColor" stroke-width="1.15" />
+              <path d="M16 16.5l2.2 2.2 4-4M16 24.5l2.2 2.2 4-4M16 32.5l2.2 2.2 4-4"
+                    stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M26.5 16.5H30M26.5 24.5H30M26.5 32.5H30" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" />
+            </svg>
+            <p class="tnum mt-7 text-[13px] text-secondary">3</p>
+            <p class="display mt-2 max-w-[15ch] text-[24px] font-normal leading-[1.25] text-primary">
+              Receive a personalised checklist
+            </p>
+            <p class="mt-3 max-w-[24ch] text-[15px] leading-[1.6] text-secondary">
+              Every form and document, organised in one place.
+            </p>
+          </li>
+          <li aria-hidden="true" class="flex justify-center px-7 pt-[22px]">
+            <svg width="34" height="8" viewBox="0 0 34 8" fill="none" class="text-accent">
+              <path d="M0 4h32m-5-3.5L32.5 4 27 7.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </li>
+          <!-- 4 -->
+          <li class="rise" style="transition-delay: 360ms">
+            <svg width="46" height="46" viewBox="0 0 46 46" fill="none" aria-hidden="true" class="text-primary">
+              <path d="M10 37c3-9 8-14 13-16s9-6 10-13" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" />
+              <path d="M29 4.5c1.5 2 2.6 3.6 3.8 4.2-1.9.9-3.4 1.6-4.9 3" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="12.5" cy="33" r="1.6" fill="currentColor" />
+              <circle cx="20" cy="26" r="1.6" fill="currentColor" />
+              <circle cx="27" cy="18" r="1.6" fill="currentColor" />
+            </svg>
+            <p class="tnum mt-7 text-[13px] text-secondary">4</p>
+            <p class="display mt-2 max-w-[15ch] text-[24px] font-normal leading-[1.25] text-primary">
+              Move through every claim at your own pace
+            </p>
+            <p class="mt-3 max-w-[24ch] text-[15px] leading-[1.6] text-secondary">
+              Nothing is urgent here. We’re with you.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ═══════════════ WHY VIRASAT EXISTS ═══════════════ -->
+      <section class="rule-t grid grid-cols-[minmax(0,0.92fr)_minmax(0,1fr)] gap-24 py-32">
+        <h2 class="rise display balance max-w-[13ch] text-[54px] font-light leading-[1.1] text-primary">
+          Nobody gives you the full picture.
+        </h2>
+        <div class="rise" style="transition-delay: 150ms">
+          <dl class="max-w-[46ch]">
+            <div class="border-t border-line py-[18px]">
+              <dt class="display text-[21px] text-primary">Banks</dt>
+              <dd class="mt-1 text-[16px] leading-[1.65] text-secondary">only know about bank accounts.</dd>
+            </div>
+            <div class="border-t border-line py-[18px]">
+              <dt class="display text-[21px] text-primary">Insurance companies</dt>
+              <dd class="mt-1 text-[16px] leading-[1.65] text-secondary">only know about insurance.</dd>
+            </div>
+            <div class="border-t border-line py-[18px]">
+              <dt class="display text-[21px] text-primary">Government offices</dt>
+              <dd class="mt-1 text-[16px] leading-[1.65] text-secondary">only know about government schemes.</dd>
+            </div>
+          </dl>
+          <p class="mt-10 max-w-[42ch] text-[17px] leading-[1.75] text-secondary">
+            Families are left connecting everything themselves.
+          </p>
+          <p class="mt-5 max-w-[42ch] text-[19px] leading-[1.7] text-primary">
+            Virasat brings everything together in one place.
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══════════════ WHAT YOU MAY DISCOVER ═══════════════
+           An editorial grid: hairline rows, thin monochrome icons, no cards. -->
+      <section class="rule-t py-32">
+        <h2 class="rise display balance max-w-[22ch] text-[44px] font-light leading-[1.15] text-primary">
+          What you may discover
+        </h2>
+        <div class="rise mt-8 w-[54px] border-t border-accent"></div>
+
+        <ul class="mt-16 grid grid-cols-4 gap-x-14 gap-y-1">
+          <!-- Bank deposits -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <path d="M3 9.5 12 4l9 5.5M5 10.5v9M19 10.5v9M9 10.5v9M15 10.5v9M2.5 20h19" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Bank deposits</span>
+          </li>
+          <!-- Insurance policies -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]" style="transition-delay: 60ms">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <path d="M12 3.2 20 6v6.2c0 4.4-3.2 7.4-8 8.8-4.8-1.4-8-4.4-8-8.8V6l8-2.8Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Insurance policies</span>
+          </li>
+          <!-- Fixed deposits -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]" style="transition-delay: 120ms">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <rect x="3.2" y="5" width="17.6" height="14" rx="1.6" stroke="currentColor" stroke-width="1.1" />
+              <circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.1" />
+              <path d="M12 8.9V5M12 19v-3.9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Fixed deposits</span>
+          </li>
+          <!-- Provident Fund -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]" style="transition-delay: 180ms">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <path d="M3.4 7.4c0-.9.7-1.6 1.6-1.6h4l1.8 2.2h8.2c.9 0 1.6.7 1.6 1.6v7.8c0 .9-.7 1.6-1.6 1.6H5c-.9 0-1.6-.7-1.6-1.6V7.4Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Provident Fund</span>
+          </li>
+          <!-- Pension benefits -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]" style="transition-delay: 40ms">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <circle cx="12" cy="12" r="8.6" stroke="currentColor" stroke-width="1.1" />
+              <path d="M12 7.3V12l3.4 2.1" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Pension benefits</span>
+          </li>
+          <!-- Investments -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]" style="transition-delay: 100ms">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <path d="M4 19.2V13M9.3 19.2V9M14.7 19.2v-6.6M20 19.2V5.4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Investments</span>
+          </li>
+          <!-- Property records -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]" style="transition-delay: 160ms">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <path d="M4 10.4 12 4l8 6.4V20H4v-9.6Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" />
+              <path d="M9.6 20v-5.6h4.8V20" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Property records</span>
+          </li>
+          <!-- Government schemes -->
+          <li class="rise flex items-center gap-4 border-t border-line py-[26px]" style="transition-delay: 220ms">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" class="shrink-0 text-primary" aria-hidden="true">
+              <circle cx="12" cy="9.6" r="5.4" stroke="currentColor" stroke-width="1.1" />
+              <path d="M8.9 14.4 7.6 20.4l4.4-2.3 4.4 2.3-1.3-6" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" />
+            </svg>
+            <span class="text-[16.5px] text-primary">Government schemes</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- ═══════════════ PRIVACY ═══════════════ -->
+      <section id="privacy" class="rule-t py-28">
+        <div class="rise flex max-w-[62ch] items-start gap-6">
+          <svg width="22" height="24" viewBox="0 0 22 24" fill="none" class="mt-[5px] shrink-0 text-primary" aria-hidden="true">
+            <rect x="3" y="9.8" width="16" height="11.6" rx="2" stroke="currentColor" stroke-width="1.15" />
+            <path d="M7 9.8V7.2a4 4 0 0 1 8 0v2.6" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" />
+            <circle cx="11" cy="15.4" r="1.5" fill="currentColor" />
+          </svg>
+          <div>
+            <p class="display text-[27px] font-normal leading-[1.3] text-primary">
+              Nothing you tell us is shared.
+            </p>
+            <p class="mt-3 text-[16.5px] leading-[1.7] text-secondary">
+              Your conversation stays private.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ═══════════════ FINAL CTA ═══════════════
+         The one dark band on the page, and the emotional close. Body copy here
+         is `accent` — #6B6865 measures 2.55:1 on navy and must never be used. -->
+    <section class="mt-16 bg-primary">
+      <div class="mx-auto grid max-w-[1180px] grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] items-center gap-16 px-10 py-36">
+        <div class="rise">
+          <h2 class="display balance max-w-[16ch] text-[58px] font-light leading-[1.08] text-ivory">
+            One conversation. That’s all it takes.
+          </h2>
+          <p class="mt-9 max-w-[40ch] text-[17.5px] leading-[1.75] text-accent">
+            We’ll help you understand what exists before you begin the paperwork.
+          </p>
+          <a
+            href="/app"
+            class="mt-12 inline-flex items-center gap-[14px] rounded-[3px] bg-ivory px-9 py-[19px] text-primary transition-opacity duration-500 hover:opacity-85"
+          >
+            <svg width="17" height="15" viewBox="0 0 17 15" fill="none" aria-hidden="true">
+              <path d="M1 6.2v2.6M5 3.1v8.8M9 1v13M13 4.4v6.2M16.4 6.7v1.6"
+                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <span class="text-[16.5px]">Talk to Virasat</span>
+          </a>
+        </div>
+
+        <!-- ─────── ILLUSTRATION: two figures walking into light ─────── -->
+        <div class="rise" style="transition-delay: 260ms">
+          <svg viewBox="0 0 520 420" class="h-auto w-full" role="img"
+               aria-label="A watercolour painting of two figures holding hands, walking together into drifting golden light beneath a starry sky.">
+            <g filter="url(#bleedSoft)" opacity="0.75">
+              <ellipse cx="300" cy="150" rx="235" ry="150" fill="#3B3F79" opacity="0.85" />
+              <ellipse cx="360" cy="300" rx="210" ry="120" fill="#8E7C6A" opacity="0.42" />
+              <ellipse cx="150" cy="250" rx="140" ry="120" fill="#4A4478" opacity="0.5" />
+            </g>
+            <!-- light pooling at their feet -->
+            <g filter="url(#soft)" opacity="0.7">
+              <ellipse cx="300" cy="352" rx="215" ry="52" fill="#E7C79C" opacity="0.55" />
+            </g>
+            <!-- drifting particles -->
+            <g fill="#F7DCA8">
+              <circle cx="120" cy="300" r="2.2" opacity="0.75" /><circle cx="168" cy="268" r="1.6" opacity="0.6" />
+              <circle cx="214" cy="312" r="2.6" opacity="0.8" /><circle cx="262" cy="252" r="1.5" opacity="0.5" />
+              <circle cx="336" cy="296" r="2.3" opacity="0.7" /><circle cx="392" cy="264" r="1.8" opacity="0.55" />
+              <circle cx="438" cy="310" r="2.5" opacity="0.75" /><circle cx="470" cy="272" r="1.4" opacity="0.45" />
+              <circle cx="196" cy="216" r="1.3" opacity="0.4" /><circle cx="300" cy="204" r="1.5" opacity="0.45" />
+              <circle cx="410" cy="196" r="1.2" opacity="0.35" />
+            </g>
+            <!-- stars, high and quiet -->
+            <g fill="#FBF9F4">
+              <circle cx="96" cy="86" r="1.7" opacity="0.7" /><circle cx="188" cy="52" r="1.3" opacity="0.55" />
+              <circle cx="276" cy="94" r="1.9" opacity="0.65" /><circle cx="364" cy="58" r="1.4" opacity="0.5" />
+              <circle cx="446" cy="102" r="1.6" opacity="0.6" /><circle cx="130" cy="140" r="1.2" opacity="0.4" />
+              <circle cx="410" cy="146" r="1.3" opacity="0.42" />
+            </g>
+            <!-- the two figures, hands joined -->
+            <g filter="url(#bleed)">
+              <path d="M226 356c-1.6-30 2-58 7.6-81 4-17 11-28 21-28s17 11 21 28c5.6 23 9.2 51 7.6 81z"
+                    fill="#F0EAE0" opacity="0.95" />
+              <circle cx="254.5" cy="230" r="15" fill="#F0EAE0" />
+              <path d="M292 356c-1.5-30 2-58 7.4-81 3.9-17 10.7-28 20.4-28s16.5 11 20.4 28c5.4 23 8.9 51 7.4 81z"
+                    fill="#B9AECF" opacity="0.95" />
+              <circle cx="320" cy="230" r="15" fill="#B9AECF" />
+              <!-- joined hands -->
+              <path d="M272 290c6 5 12 5 18 0" stroke="#E7C79C" stroke-width="3.4" fill="none" stroke-linecap="round" />
+            </g>
+            <!-- ground -->
+            <g filter="url(#bleedSoft)" opacity="0.5">
+              <rect x="40" y="350" width="450" height="16" fill="#6E6A8C" />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <div class="mx-auto max-w-[1180px] px-10">
+      <footer class="flex items-end justify-between gap-12 py-16">
+        <div>
+          <p class="display text-[24px] font-medium leading-none text-primary">Virasat</p>
+          <p class="mt-[6px] font-kannada text-[14px] leading-none text-secondary">ವಿರಾಸತ್</p>
+          <p class="mt-6 text-[15px] text-secondary">Made with care for families.</p>
+        </div>
+        <nav class="flex items-center gap-9">
+          <a href="#" class="text-[15px] text-secondary transition-colors duration-500 hover:text-primary">About</a>
+          <a href="#privacy" class="text-[15px] text-secondary transition-colors duration-500 hover:text-primary">Privacy</a>
+          <a href="#" class="text-[15px] text-secondary transition-colors duration-500 hover:text-primary">Contact</a>
+        </nav>
+      </footer>
+    </div>
+
+    <script>
+      // Quiet entrance. Each element rises once, then the observer lets it go —
+      // nothing re-animates on scroll back, which would read as fidgety.
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.classList.add("in");
+            io.unobserve(entry.target);
+          }
+        },
+        { rootMargin: "0px 0px -12% 0px", threshold: 0.06 },
+      );
+      for (const el of document.querySelectorAll(".rise")) io.observe(el);
+    </script>
+  </body>
+</html>

@@ -2,6 +2,7 @@ import { deriveClaims } from "../src/rules/engine.ts";
 import type { EstateProfile } from "../src/rules/types.ts";
 import { applyQuestionAnswer, nextQuestion } from "../src/interview/state.ts";
 import { extractAnswer } from "../src/interview/extract.ts";
+import type { QuestionCopy } from "../src/interview/questions.ts";
 import { parseClientMessage, type ServerMessage } from "../src/interview/protocol.ts";
 import { isCurrentGeneration } from "../src/interview/session.ts";
 import { extractWithOpenAI } from "../src/openai/chat.ts";
@@ -26,7 +27,12 @@ import {
 import { streamSpeech as streamSarvamSpeech } from "../src/sarvam/tts.ts";
 import type { InterviewLanguage, VoiceProvider } from "../src/voice/config.ts";
 
-type TranscriptEntry = { questionId: string; label: string; answer: string };
+type TranscriptEntry = {
+  questionId: string;
+  label: string;
+  question: QuestionCopy;
+  answer: string;
+};
 type Session = {
   profile: EstateProfile;
   language: InterviewLanguage;
@@ -48,6 +54,10 @@ const index = Bun.file(new URL("./index.html", import.meta.url));
 const app = Bun.file(new URL("./app.js", import.meta.url));
 const worklet = Bun.file(new URL("./pcm-worklet.js", import.meta.url));
 const tokens = Bun.file(new URL("./tokens.js", import.meta.url));
+// The alternative landing page at /v2 — a separate design language, kept beside
+// the register system rather than replacing it so both can be compared.
+const landingV2 = Bun.file(new URL("./landing-v2.html", import.meta.url));
+const tokensV2 = Bun.file(new URL("./tokens-v2.js", import.meta.url));
 
 const sarvamApiKey = getSarvamApiKey();
 const sarvam = sarvamApiKey ? createSarvamClient(sarvamApiKey) : null;
@@ -67,7 +77,7 @@ function defaultProvider(): VoiceProvider {
 }
 
 function initialSession(
-  language: InterviewLanguage = "kn-IN",
+  language: InterviewLanguage = "en-IN",
   generation = 0,
   provider: VoiceProvider = defaultProvider(),
 ): Session {
@@ -202,7 +212,12 @@ async function applyTranscript(
       return;
     }
     ws.data.profile = applyQuestionAnswer(ws.data.profile, question, result.value);
-    ws.data.transcript.push({ questionId, label: question.label, answer: transcript });
+    ws.data.transcript.push({
+      questionId,
+      label: question.label,
+      question: question.copy,
+      answer: transcript,
+    });
     send(ws, { type: "answer", questionId, text: transcript, value: result.value });
     sendState(ws);
   } finally {
@@ -281,6 +296,17 @@ const server = Bun.serve<Session>({
     if (url.pathname === "/tokens.js") {
       return new Response(tokens, { headers: { "Content-Type": "text/javascript" } });
     }
+
+    if (url.pathname === "/tokens-v2.js") {
+      return new Response(tokensV2, { headers: { "Content-Type": "text/javascript" } });
+    }
+
+    if (url.pathname === "/v2") {
+      return new Response(landingV2, { headers: { "Content-Type": "text/html" } });
+    }
+
+    // The interview lives at /app. The landing page owns the root so the demo can
+    // open on the problem statement and click through into the tool.
     if (url.pathname === "/app" || url.pathname === "/index.html") {
       return new Response(index, { headers: { "Content-Type": "text/html" } });
     }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractLocally } from "./extract.ts";
+import { extractFastPath, extractLocally } from "./extract.ts";
 import { questionById } from "./questions.ts";
 
 function question(id: string) {
@@ -35,8 +35,49 @@ describe("deterministic extraction fallback", () => {
     )).toBe("applied");
   });
 
+  test("never lets an unknown answer collapse into no", () => {
+    // The failure this product exists to prevent. "ಗೊತ್ತಿಲ್ಲ" contains "ಇಲ್ಲ" and
+    // "no idea" contains "no", so a naive order records both as a firm no and
+    // silently drops the claim that an unknown would have surfaced.
+    for (const answer of ["no idea", "I don't know", "ಗೊತ್ತಿಲ್ಲ", "not sure"]) {
+      expect(extractFastPath(question("epfo"), answer)).toBe("unknown");
+      expect(extractLocally(question("epfo"), answer)).toBe("unknown");
+    }
+    // Where the question offers no unknown value, defer rather than guess "no".
+    for (const answer of ["no idea", "I don't know"]) {
+      expect(extractFastPath(question("death-certificate"), answer)).toBeNull();
+      expect(extractLocally(question("death-certificate"), answer)).toBeNull();
+    }
+  });
+
   test("bounds free-text labels", () => {
     expect(extractLocally(question("district"), "  Bengaluru   Urban ")).toBe("Bengaluru Urban");
     expect(extractLocally(question("district"), "x".repeat(81))).toBeNull();
+  });
+});
+
+describe("fast path — resolves ordinary answers with no model call", () => {
+  test("reads indirect affirmations and negations", () => {
+    const dc = question("death-certificate");
+    for (const answer of ["I do", "Yes, I do.", "I have it", "we got it last week",
+      "it's with my brother", "in hand", "ಹೌದು"]) {
+      expect(extractFastPath(dc, answer)).toBe("yes");
+    }
+    for (const answer of ["I don't have it yet", "not yet", "nope", "ಇಲ್ಲ", "नहीं"]) {
+      expect(extractFastPath(dc, answer)).toBe("no");
+    }
+    expect(extractFastPath(dc, "we applied for it")).toBe("applied");
+  });
+
+  test("defers a sentence that carries both a negative and an affirmative", () => {
+    // Late negation is what keyword matching gets backwards, so it must go to
+    // the model rather than be guessed at.
+    expect(extractFastPath(question("death-certificate"), "no, he did have one")).toBeNull();
+  });
+
+  test("does not read an affirmation out of a contraction", () => {
+    // Substring matching finds "i do" inside "i don't" and "sure" inside "unsure".
+    expect(extractFastPath(question("epfo"), "I don't think so")).not.toBe("yes");
+    expect(extractFastPath(question("epfo"), "unsure")).toBe("unknown");
   });
 });
