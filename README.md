@@ -65,6 +65,10 @@ bun run dev                   # Voice/text server with hot reload
 # or: bun run web
 ```
 
+- `http://localhost:3000/` — landing page: the problem, the claim nobody files, a
+  real register excerpt
+- `http://localhost:3000/app` — the interview and live register
+
 Copy `.env.example` to `.env` and set the server-local key:
 
 ```bash

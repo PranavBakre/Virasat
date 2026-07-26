@@ -138,7 +138,7 @@ const questions: Question[] = [
 const assetSpecs: Array<[string, keyof EstateProfile, string, QuestionCopy]> = [
   ["post-office", "postOfficeSchemes", "Post office savings", copy("ಅವರಿಗೆ ಅಂಚೆ ಕಚೇರಿ ಉಳಿತಾಯ ಯೋಜನೆ ಇತ್ತೇ?", "क्या उनकी कोई डाकघर बचत योजना थी?", "Did they have post-office savings?")],
   ["insurance", "insurance", "Life insurance", copy("ಅವರಿಗೆ ಜೀವ ವಿಮೆ ಇತ್ತೇ?", "क्या उनकी जीवन बीमा पॉलिसी थी?", "Did they have life insurance?")],
-  ["demat", "demat", "Shares", copy("ಅವರಿಗೆ ಡಿಮ್ಯಾಟ್ ಖಾತೆ ಇತ್ತೇ?", "क्या उनका डीमैट खाता था?", "Did they have a demat account?")],
+  ["demat", "securities", "Shares", copy("ಅವರಿಗೆ ಡಿಮ್ಯಾಟ್ ಖಾತೆ ಇತ್ತೇ?", "क्या उनका डीमैट खाता था?", "Did they have a demat account?")],
   ["mutual-funds", "mutualFunds", "Mutual funds", copy("ಅವರಿಗೆ ಮ್ಯೂಚುವಲ್ ಫಂಡ್ ಇತ್ತೇ?", "क्या उनका म्यूचुअल फंड निवेश था?", "Did they have mutual funds?")],
   ["immovable-property", "immovableProperty", "House or land", copy("ಅವರಿಗೆ ಮನೆ ಅಥವಾ ಜಮೀನು ಇತ್ತೇ?", "क्या उनके पास घर या ज़मीन थी?", "Did they own a house or land?")],
   ["vehicle", "vehicle", "Vehicle", copy("ಅವರಿಗೆ ವಾಹನ ಇತ್ತೇ?", "क्या उनके पास वाहन था?", "Did they own a vehicle?")],

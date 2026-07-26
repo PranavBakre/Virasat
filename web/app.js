@@ -197,15 +197,13 @@ function renderConversation() {
   const question = state.question;
   document.querySelector("#step-label").textContent = question
     ? `Question ${state.transcript.length + 1}` : "Interview complete";
-  document.querySelector("#question-kn").textContent = question?.copy[state.language]
-    ?? (state.language === "hi-IN"
-      ? "आपके उत्तरों से पहचाने गए दावे दाईं ओर हैं।"
-      : state.language === "en-IN"
-        ? "Your identified claims are shown on the right."
-        : "ನಿಮ್ಮ ಉತ್ತರಗಳಿಂದ ಗುರುತಿಸಿದ ಹಕ್ಕುಗಳು ಬಲಭಾಗದಲ್ಲಿವೆ.");
-  const subtitle = document.querySelector("#question-en");
-  subtitle.classList.toggle("hidden", state.language === "en-IN");
-  subtitle.textContent = question?.copy["en-IN"] ?? "Your identified claims are shown on the right.";
+  document.querySelector("#question-en").textContent =
+    question?.copy["en-IN"] ?? "Your identified claims are shown on the right.";
+  const localQuestion = document.querySelector("#question-kn");
+  localQuestion.classList.toggle("hidden", state.language === "en-IN");
+  localQuestion.textContent = state.language === "hi-IN"
+    ? question?.copy["hi-IN"] ?? "आपके उत्तरों से पहचाने गए दावे दाईं ओर हैं।"
+    : question?.copy["kn-IN"] ?? "ನಿಮ್ಮ ಉತ್ತರಗಳಿಂದ ಗುರುತಿಸಿದ ಹಕ್ಕುಗಳು ಬಲಭಾಗದಲ್ಲಿವೆ.";
   document.querySelector("#answer-form").classList.toggle("hidden", !question);
   document.querySelector("#mic-button").disabled = !question || !state.sarvamAvailable;
   document.querySelector("#voice-note").textContent = state.sarvamAvailable

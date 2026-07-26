@@ -125,8 +125,8 @@ Someone may be using this within a week of a death.
 
 ```bash
 bun install
-bun run web           # Voice/text interview + live checklist
-bun run dev           # Same server with hot reload
+bun run web           # / = landing · /app = voice/text interview
+bun run dev           # Same Bun server with hot reload
 bun run convex        # Reserved persistence backend (not in the Iteration 1 voice path)
 bun run typecheck
 bun test

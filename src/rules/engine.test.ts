@@ -180,6 +180,143 @@ describe("deriveClaims", () => {
     ).toBe(true);
   });
 
+  // The simplified no-nominee ceiling is ₹15 lakh at a commercial bank but only
+  // ₹5 lakh at a cooperative bank. The rule used to require bankType
+  // "commercial", so a cooperative account matched nothing and the family was
+  // shown no route at all for it.
+  test.each([
+    ["commercial", "under-5L", "bank-no-nominee-simplified"],
+    ["commercial", "5L-15L", "bank-no-nominee-simplified"],
+    ["commercial", "over-15L", "bank-no-nominee-succession-certificate"],
+    ["cooperative", "under-5L", "bank-no-nominee-simplified"],
+    ["cooperative", "5L-15L", "bank-no-nominee-succession-certificate"],
+    ["cooperative", "over-15L", "bank-no-nominee-succession-certificate"],
+  ] as const)(
+    "routes a %s bank account at %s to %s",
+    (bankType, amountBracket, expectedClaimId) => {
+      const result = deriveClaims(
+        makeProfile({
+          banks: {
+            exists: "yes",
+            accounts: [
+              {
+                id: "bank-1",
+                bankName: "Test Bank",
+                bankType,
+                holding: "sole",
+                nominee: "no",
+                amountBracket,
+              },
+            ],
+          },
+        }),
+      );
+
+      const bankClaims = result.claims.filter((claim) =>
+        claim.id.startsWith("bank-"),
+      );
+      expect(bankClaims.map((claim) => claim.id)).toEqual([expectedClaimId]);
+    },
+  );
+
+  test("an unknown balance routes to court rather than to nothing", () => {
+    for (const amountBracket of ["unknown", undefined] as const) {
+      const result = deriveClaims(
+        makeProfile({
+          banks: {
+            exists: "yes",
+            accounts: [
+              {
+                id: "bank-1",
+                bankType: "commercial",
+                holding: "sole",
+                nominee: "no",
+                ...(amountBracket ? { amountBracket } : {}),
+              },
+            ],
+          },
+        }),
+      );
+
+      expect(
+        result.claims.map((claim) => claim.id).filter((id) => id.startsWith("bank-")),
+      ).toEqual(["bank-no-nominee-succession-certificate"]);
+    }
+  });
+
+  test("a joint account with survivorship claims without any certificate", () => {
+    const result = deriveClaims(
+      makeProfile({
+        banks: {
+          exists: "yes",
+          accounts: [
+            {
+              id: "bank-1",
+              bankName: "Canara Bank",
+              bankType: "commercial",
+              holding: "joint",
+              survivorship: "yes",
+            },
+          ],
+        },
+      }),
+    );
+
+    const claim = result.claims.find(
+      (candidate) => candidate.id === "bank-joint-survivorship",
+    );
+    expect(claim).toBeDefined();
+    expect(claim?.docsRequired.map((document) => document.id)).not.toContain(
+      "succession-certificate",
+    );
+  });
+
+  // The guard that matters most. CLAUDE.md: a spurious claim is visible and
+  // survivable, a silently dropped entitlement is not. Every account the family
+  // told us about must surface on at least one claim, whatever its shape.
+  test("no known bank account is ever silently dropped", () => {
+    const accounts = [
+      { id: "a", bankType: "commercial", holding: "sole", nominee: "yes" },
+      { id: "b", bankType: "commercial", holding: "sole", nominee: "no", amountBracket: "5L-15L" },
+      { id: "c", bankType: "cooperative", holding: "sole", nominee: "no", amountBracket: "5L-15L" },
+      { id: "d", bankType: "commercial", holding: "sole", nominee: "no", amountBracket: "over-15L" },
+      { id: "e", bankType: "unknown", holding: "sole", nominee: "no", amountBracket: "unknown" },
+      { id: "f", bankType: "commercial", holding: "joint", survivorship: "yes" },
+    ] as const;
+
+    const result = deriveClaims(
+      makeProfile({ banks: { exists: "yes", accounts: [...accounts] } }),
+    );
+    const covered = new Set(
+      result.claims.map((claim) => claim.assetRef).filter(Boolean),
+    );
+
+    for (const account of accounts) {
+      expect(covered).toContain(account.id);
+    }
+  });
+
+  test("a dormant account surfaces the UDGAM search card", () => {
+    const result = deriveClaims(
+      makeProfile({
+        banks: {
+          exists: "yes",
+          accounts: [
+            {
+              id: "bank-1",
+              bankType: "commercial",
+              holding: "sole",
+              nominee: "yes",
+              dormantOver10Years: "yes",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(result.cards.map((card) => card.id)).toContain("bank-dormant-udgam");
+  });
+
   test("keeps discovery cards outside the claims collection", () => {
     const result = deriveClaims(
       makeProfile({

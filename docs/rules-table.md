@@ -69,7 +69,7 @@ certificate; it is never guessed downward.
 |---|---|---|---|
 | employment = employed at death, had PF | PF balance | EPFO form 20 | death certificate, claimant ID + bank details, member's UAN/PF number [VERIFY form list epfindia.gov.in] |
 | same | EPS pension for widow/children | EPFO form 10D | same + family details, photos |
-| same | EDLI insurance (life cover up to ~₹7 lakh, near-automatic entitlement, almost nobody claims it) | EPFO form 5IF | same [VERIFY current EDLI max amount] |
+| same | EDLI insurance (life cover up to ~₹7 lakh, near-automatic entitlement, almost nobody claims it) | EPFO form 5IF | same [VERIFY current EDLI max amount against S4 — secondary sources agree on **₹7 lakh** max, so expect to confirm rather than correct]. **Hard eligibility cliff: EDLI pays only if the member was in employment and contributing at the date of death.** If they had left the job, this claim fails — do not show it as available when employment ≠ employed at death |
 | same | gratuity + final salary + leave encashment | employer HR | death certificate, legal heir proof, nominee record with employer [VERIFY legal basis and document list] |
 | employment = retired, receiving pension | family pension conversion + arrears | pension disbursing bank + treasury (karnataka: PPO route) | death certificate, PPO, claimant ID, joint photo if required [VERIFY karnataka treasury process] |
 | don't know if PF existed | discovery card | — | "check old salary slips for UAN, or ask employer HR; UAN portal search" |
@@ -81,8 +81,42 @@ certificate; it is never guessed downward.
 | nominee | value | route | docs |
 |---|---|---|---|
 | yes | any | transmission to nominee | transmission form (DP/AMC), death certificate, nominee KYC |
-| no | ≤ ₹5 lakh per DP/AMC [VERIFY current SEBI simplified-transmission threshold — it has changed over the years] | simplified: legal heir proof + indemnity + NOCs | per DP/AMC list |
-| no | above threshold | succession certificate / probate | section 5 |
+| no | **demat / mutual fund units: ≤ ₹15 lakh** per beneficial owner | simplified: legal heir proof + indemnity + NOCs | per DP/AMC list |
+| no | **physical shares: ≤ ₹5 lakh** per listed company | simplified: legal heir proof + indemnity + NOCs | per RTA list |
+| no | above the applicable threshold | succession certificate / probate | section 5 |
+
+> **Fixed 26 Jul 2026 — this row was wrong.** It previously read "≤ ₹5 lakh per
+> DP/AMC" for all securities, which conflates two different limits. **Demat is
+> ₹15 lakh, not ₹5 lakh** — the old row sent families holding ₹5–15 lakh in demat
+> to court when the simplified route was open to them. Ask which form the holding
+> is in; almost everything is demat.
+>
+> [VERIFY both current figures against S8 — sebi.gov.in, not a blog. Secondary
+> reporting was the only source available at fix time.]
+>
+> **Change coming, do NOT ship it yet:** a SEBI circular reported as dated
+> **23 Jul 2026** raises these to **₹10 lakh physical / ₹30 lakh demat**, adds a
+> Quick Transmission tier (₹10k physical / ₹30k demat), drops probate in
+> uncontested cases, mandates acceptance of overseas death certificates, and sets
+> 21-day processing — **effective 22 Aug 2026**, i.e. *after* demo day. The
+> ₹15L/₹5L figures above are the operative ones today.
+> [VERIFY the 23 Jul 2026 circular number and its commencement date on sebi.gov.in
+> before this date passes — after 22 Aug 2026 this row becomes wrong.]
+
+**Profile shape this row needs** (`EstateProfile.securities` in `src/rules/types.ts`):
+
+| field | values | why |
+|---|---|---|
+| `form` | `"demat" \| "physical" \| "unknown"` | decides **which** ceiling applies — the amount alone cannot |
+| `amountBracket` | the shared `AmountBracket` | its boundaries (₹5L, ₹15L) are exactly the two ceilings |
+
+The threshold lives in the **rule**, not the type — same pattern as `bankType` +
+`amountBracket` for banks. `unknown` form takes the **stricter** ₹5 lakh ceiling,
+never guessed upward. **No §4 rule is implemented yet** — only the shape is
+correct, so nothing renders for securities today.
+
+Interview must ask **which form** the holding is in, not just the value. Almost
+everything is demat; physical certificates mostly turn up in older estates.
 
 ---
 
@@ -93,7 +127,7 @@ certificate; it is never guessed downward.
 | what it proves | who the heirs are | right to collect movable assets (debts & securities) — movable ONLY, never property title |
 | issued by | tahsildar via nadakacheri portal (atalji janasnehi kendra) [VERIFY current portal name + fee] | civil court — city civil court bengaluru / district court [VERIFY court fee % under karnataka court fees act, and cap] |
 | used for | pension, employer dues, small-value bank/insurance routes | no-nominee bank >15L, shares above threshold, debts owed to deceased |
-| time | weeks [VERIFY nadakacheri SLA] | months (court notice + objection window ~45 days [VERIFY]) |
+| time | weeks [VERIFY nadakacheri SLA] | months (court notice + objection window ~45 days [VERIFY against S3, **ISA s. 373** — secondary sources agree on 45 days, expect to confirm]) |
 | docs to apply | death certificate, applicant ID, family details/ration card, address proof | petition u/s 372 ISA, death certificate, heir list, asset schedule with values, NOCs from co-heirs |
 
 ---
@@ -102,17 +136,67 @@ certificate; it is never guessed downward.
 
 | condition | route |
 |---|---|
-| will names executor | executor applies; probate optional in karnataka for most cases but institutions above thresholds may demand probate or letters of administration [VERIFY karnataka probate practice — presidency-town mandatory rule doesn't cover bengaluru, confirm] |
+| will names executor | executor applies. **probate is optional everywhere in india** — but institutions above their thresholds may still demand probate or letters of administration in practice [VERIFY the repeal against the primary Act text, S10 — see the note below] |
 | will, no executor | letters of administration, district court |
 | product behaviour | show document checklists as normal; shares section says "distribution per the will — probate advisable for high-value/contested estates" |
+
+> **The old `[VERIFY]` here asked whether the presidency-town mandatory-probate
+> rule covers Bengaluru. That question is now moot — 26 Jul 2026.**
+>
+> **ISA s. 213 — the provision that made probate mandatory — was *deleted*** by the
+> **Repealing and Amending Act, 2025** (assent reported as **20 Dec 2025**). It had
+> applied to wills of Hindus, Buddhists, Sikhs, Jains and Parsis within the original
+> civil jurisdiction of the Calcutta, Madras and Bombay High Courts. Bengaluru was
+> never covered, so the answer for Karnataka was always "not mandatory" — and now
+> it is not mandatory anywhere.
+>
+> The rest of the probate machinery survives (ISA ss. 222–232 grants, s. 276
+> petition, Part X succession certificates). **Deletion of s. 213 removes a
+> procedural bar, not the need to prove the will as evidence.**
+>
+> Corroborating signal: SEBI's reported 23 Jul 2026 transmission circular drops the
+> probate requirement in uncontested cases, **expressly citing this amendment**.
+>
+> [VERIFY against the Repealing and Amending Act, 2025 primary text (S10). Law-firm
+> secondary sources only at fix time — substance near-certain, citation is not.]
+>
+> **Product line, safe to say either way:** "probate isn't required by law — but the
+> bank or society holding the asset may still ask for it. If they do, that's their
+> policy, not a legal requirement."
 
 ---
 
 ## 7. SHARES SUMMARY (spoken by agent, hindu intestate only)
 
-class I heirs (HSA schedule): widow, sons, daughters, mother — equal shares. daughters equal post-2005 amendment. [VERIFY exact schedule wording]
+class I heirs (HSA schedule): widow, sons, daughters, mother — **one share each**. daughters equal post-2005 amendment. [VERIFY exact schedule wording against S2]
 
-agent line: "under the hindu succession act, [name]'s property divides equally among: [derived list from interview q17]."
+**Not simply "equal shares" — HSA s. 10 counts shares, not people:**
+
+| rule | effect |
+|---|---|
+| all widows together | **one** share between them, not one each |
+| each living son, each living daughter, the mother | **one** share each |
+| the children of a **predeceased** son or daughter | **one** share for that whole branch, divided within it |
+
+Worked: widow + 2 sons + 1 daughter + mother + 2 children of a predeceased son
+= 6 shares. The five living class I heirs take **1/6 each**; the two grandchildren
+**split 1/6, i.e. 1/12 each** — not 1/6 each.
+
+> **Fixed 26 Jul 2026 — the old line said "equal shares" flatly.** That
+> over-promises to grandchildren whenever a child predeceased the deceased, which
+> is exactly the family most likely to be using this. Wrong shares spoken aloud to
+> a grieving person is the failure mode this product exists to prevent.
+>
+> [VERIFY s. 10 rules 1–4 wording against S2, indiacode — the branch rule above
+> came from secondary sourcing at fix time.]
+
+agent line, no predeceased child: "under the hindu succession act, [name]'s property divides equally among: [derived list from interview q17]."
+
+agent line, a child predeceased: "under the hindu succession act, [name]'s property divides into [N] shares — one each for [living class I heirs], and one share shared between [predeceased child]'s children."
+
+**If the interview did not establish whether any child predeceased, do not speak a
+share split at all.** Say the class I list and route to a lawyer for the division.
+Guessing "equal" is the harmful default.
 
 ---
 
@@ -156,8 +240,9 @@ Download all into `legal_sources/` before building — verify `[VERIFY]` tags ag
 | S5 | LIC death claim process + forms | https://licindia.in → "Customer Services / Claims" |
 | S6 | nadakacheri (atalji janasnehi kendra) — karnataka legal heir/family tree certificate application, fee, SLA | https://nadakacheri.karnataka.gov.in |
 | S7 | UDGAM — RBI unclaimed deposits search portal (discovery card link, use verbatim in product) | https://udgam.rbi.org.in |
-| S8 | SEBI simplified transmission threshold for securities (verify current limit for section 4) | search "transmission of securities threshold" on https://www.sebi.gov.in |
+| S8 | SEBI simplified transmission thresholds for securities — **two limits, not one**: physical (per listed company) and demat (per beneficial owner). Also fetch the **circular reported as dated 23 Jul 2026** raising them to ₹10L/₹30L **effective 22 Aug 2026** — confirm its number and commencement | search "transmission of securities" on https://www.sebi.gov.in |
 | S9 | Karnataka Court Fees and Suits Valuation Act — succession certificate court fee % and cap | search on https://dpal.karnataka.gov.in or the karnataka high court site |
+| S10 | **Repealing and Amending Act, 2025** — confirm it deleted **ISA s. 213** and the assent date (reported 20 Dec 2025). Settles section 6's probate question | search "Repealing and Amending Act 2025" on https://www.indiacode.nic.in |
 
 **Notes:**
 
@@ -179,6 +264,28 @@ Download all into `legal_sources/` before building — verify `[VERIFY]` tags ag
 |---|---|
 | 0 | `evaluateGates()` in `src/rules/engine.ts` — runs before any claim routes |
 | 1–4 | `RULES` array in `src/rules/table.ts` — one entry per row |
+
+**Transcription status as of 26 Jul 2026** — the table is ahead of the code, and
+an untranscribed row means a family is shown **nothing** for that asset:
+
+| § | Row | Rule id | Status |
+|---|---|---|---|
+| 1 | joint + survivorship | `bank-joint-survivorship` | ✅ |
+| 1 | sole + nominee | `bank-nominee` | ✅ |
+| 1 | sole, no nominee, within ceiling | `bank-no-nominee-simplified` | ✅ ceiling is per bank type — ₹15L commercial, ₹5L cooperative, stricter if type unknown |
+| 1 | sole, no nominee, above ceiling / unknown amount | `bank-no-nominee-succession-certificate` | ✅ |
+| 1 | dormant > 10 yrs | `bank-dormant-udgam` card | ✅ |
+| 3 | PF / EPS / EDLI / employer dues | `epfo-pf`, `epfo-eps`, `epfo-edli`, `employer-dues` | ✅ |
+| **2** | **life insurance — all four rows** | — | ❌ **not transcribed.** `insurance.exists === "yes"` yields no claim; only an `exists === "unknown"` discovery card exists |
+| **3** | **retired + receiving pension → family pension + arrears** | — | ❌ **not transcribed** |
+| **3** | **PF existence unknown → discovery card** | — | ❌ **not transcribed** |
+| **4** | **securities — all rows** | — | ❌ **not transcribed** (shape now correct, see §4) |
+| **8** | 6 of 11 inference rows | — | ❌ post-office track, no-nominee nudge, property/vehicle track, locker track, receivables track, liabilities card |
+| **1** | joint **without** survivorship | — | ❌ no row in this table either — undefined behaviour, needs a decision |
+
+A regression test guards the implemented set: *"no known bank account is ever
+silently dropped"* in `src/rules/engine.test.ts` asserts every account the family
+named surfaces on at least one claim. **Extend it as §2 and §4 land.**
 | 5 | `Certificate` cards, referenced by `blockedOn` from rows in 1 and 4 |
 | 6 | `probateTrack()` — swaps the route set, does not extend it |
 | 7 | `sharesFor(profile)` — returns a spoken string, never a computation |

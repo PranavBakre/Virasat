@@ -31,11 +31,13 @@ type Session = {
   generation: number;
 };
 
+const landing = Bun.file(new URL("./landing.html", import.meta.url));
 const index = Bun.file(new URL("./index.html", import.meta.url));
 const app = Bun.file(new URL("./app.js", import.meta.url));
 const worklet = Bun.file(new URL("./pcm-worklet.js", import.meta.url));
 const apiKey = getSarvamApiKey();
 const sarvam = apiKey ? createSarvamClient(apiKey) : null;
+const tokens = Bun.file(new URL("./tokens.js", import.meta.url));
 
 function initialSession(
   language: InterviewLanguage = "kn-IN",
@@ -152,9 +154,21 @@ const server = Bun.serve<Session>({
     if (url.pathname === "/pcm-worklet.js") {
       return new Response(worklet, { headers: { "Content-Type": "text/javascript" } });
     }
-    if (url.pathname === "/" || url.pathname === "/index.html") {
+
+    if (url.pathname === "/tokens.js") {
+      return new Response(tokens, { headers: { "Content-Type": "text/javascript" } });
+    }
+
+    // The interview lives at /app. The landing page owns the root so the demo can
+    // open on the problem statement and click through into the tool.
+    if (url.pathname === "/app" || url.pathname === "/index.html") {
       return new Response(index, { headers: { "Content-Type": "text/html" } });
     }
+
+    if (url.pathname === "/") {
+      return new Response(landing, { headers: { "Content-Type": "text/html" } });
+    }
+
     return new Response("Not found", { status: 404 });
   },
   websocket: {
@@ -232,5 +246,5 @@ const server = Bun.serve<Session>({
   },
 });
 
-console.log(`Virasat voice interview: http://localhost:${server.port}`);
+console.log(`Virasat: http://localhost:${server.port} (landing) · /app (voice interview)`);
 console.log(sarvam ? "Sarvam voice enabled" : "SARVAM_API_KEY missing; typed interview enabled");
