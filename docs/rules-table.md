@@ -70,7 +70,7 @@ certificate; it is never guessed downward.
 | employment = employed at death, had PF | PF balance | EPFO form 20 | death certificate, claimant ID + bank details, member's UAN/PF number [VERIFY form list epfindia.gov.in] |
 | same | EPS pension for widow/children | EPFO form 10D | same + family details, photos |
 | same | EDLI insurance (life cover up to ~₹7 lakh, near-automatic entitlement, almost nobody claims it) | EPFO form 5IF | same [VERIFY current EDLI max amount] |
-| same | gratuity + final salary + leave encashment | employer HR | death certificate, legal heir proof, nominee record with employer |
+| same | gratuity + final salary + leave encashment | employer HR | death certificate, legal heir proof, nominee record with employer [VERIFY legal basis and document list] |
 | employment = retired, receiving pension | family pension conversion + arrears | pension disbursing bank + treasury (karnataka: PPO route) | death certificate, PPO, claimant ID, joint photo if required [VERIFY karnataka treasury process] |
 | don't know if PF existed | discovery card | — | "check old salary slips for UAN, or ask employer HR; UAN portal search" |
 

@@ -5,8 +5,6 @@
   "description": "Voice agent (Kannada/English) that maps every claim a family can file after a death in India.",
   "type": "module",
   "scripts": {
-    "core": "bun run core.ts",
-    "interview": "bun run interview.ts",
     "dev": "bunx convex dev",
     "web": "bun run --hot web/serve.ts",
     "typecheck": "tsc --noEmit",
