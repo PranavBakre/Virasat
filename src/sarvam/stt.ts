@@ -19,6 +19,7 @@ export async function openTranscriptionStream(
     flush_signal: "true",
     reconnectAttempts: 2,
   });
+  configureStreamingSocketForBun(socket);
 
   socket.on("message", (message) => {
     if (message.type !== "data" || !("transcript" in message.data)) return;
@@ -29,6 +30,13 @@ export async function openTranscriptionStream(
   socket.on("error", onError);
   await socket.waitForOpen();
   return socket;
+}
+
+export function configureStreamingSocketForBun(socket: SttSocket): void {
+  // sarvamai@1.1.7 defaults its reconnecting transport to browser-style
+  // `blob`. Bun's native WebSocket rejects that value during its deferred
+  // connection setup, so select Bun's supported binary representation first.
+  socket.socket.binaryType = "arraybuffer";
 }
 
 export function sendPcm16(socket: SttSocket, bytes: Uint8Array): void {
