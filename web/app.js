@@ -332,8 +332,8 @@ function renderDocuments() {
       </div>
       <span class="tnum text-[13px] text-ink2">${files.length} stored</span>
     </div>
-    <form id="document-upload-form" class="mt-4 border border-dashed border-rule bg-sheet p-4">
-      <label class="block text-[15px] font-medium text-indigo" for="document-upload">Choose documents</label>
+    <form id="document-upload-form" class="mt-4 border border-dashed border-rule bg-sheet p-4 transition-colors">
+      <label class="block text-[15px] font-medium text-indigo" for="document-upload">Drop documents here, or choose files</label>
       <input id="document-upload" class="mt-2 block w-full text-[14px] text-ink2"
         type="file" name="documents" accept=".pdf,.png,.jpg,.jpeg,.txt,.md,.csv,.json" multiple required>
       <div class="mt-3 flex items-center justify-between gap-4">
@@ -378,17 +378,42 @@ function renderDocuments() {
       status: input.checked ? "yes" : "no",
     }));
   });
-  document.querySelector("#document-upload-form").addEventListener("submit", uploadDocuments);
+  const uploadForm = document.querySelector("#document-upload-form");
+  uploadForm.addEventListener("submit", uploadDocuments);
+  uploadForm.addEventListener("dragover", (event) => {
+    if (!event.dataTransfer?.types.includes("Files")) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    uploadForm.classList.add("border-indigo", "bg-paper");
+  });
+  uploadForm.addEventListener("dragleave", (event) => {
+    if (event.relatedTarget && uploadForm.contains(event.relatedTarget)) return;
+    uploadForm.classList.remove("border-indigo", "bg-paper");
+  });
+  uploadForm.addEventListener("drop", (event) => {
+    if (!event.dataTransfer?.files.length) return;
+    event.preventDefault();
+    uploadForm.classList.remove("border-indigo", "bg-paper");
+    uploadDocumentFiles(uploadForm, [...event.dataTransfer.files]);
+  });
 }
 
 async function uploadDocuments(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const input = form.querySelector("#document-upload");
-  const files = [...input.files];
+  await uploadDocumentFiles(form, [...input.files]);
+}
+
+async function uploadDocumentFiles(form, files) {
   if (!files.length) return;
   const status = form.querySelector("#document-upload-status");
   const button = form.querySelector("button");
+  if (button.disabled) return;
+  if (files.length > 10) {
+    status.textContent = "Choose up to 10 documents at a time.";
+    return;
+  }
   button.disabled = true;
   status.textContent = `Reading ${files.length} ${files.length === 1 ? "document" : "documents"}…`;
   const body = new FormData();
