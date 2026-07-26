@@ -145,4 +145,4 @@ Sarvam capability selected: **Voice Experience** (2.5× multiplier).
 ## Approval
 
 - [ ] Mentor approved scope
-- [ ] Iteration 0 committed and working
+- [x] Iteration 0 committed and working

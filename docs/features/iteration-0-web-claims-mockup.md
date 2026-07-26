@@ -1,6 +1,6 @@
 # Iteration 0 — Web claims mockup
 
-> Status: **in progress**
+> Status: **complete**
 > Replaces the former terminal claims-engine and browser-checklist iterations.
 
 ## What it does
@@ -54,14 +54,14 @@ The interview is mocked. The legal derivation is not.
 
 ## Done when
 
-- [ ] `bun run web` opens the mockup at `http://localhost:3000`
-- [ ] Claims appear while the scripted interview advances
-- [ ] EDLI is visibly marked as commonly missed
-- [ ] Missing documents block claims without removing them
-- [ ] Every claim shows its source and `[VERIFY]` when applicable
-- [ ] Death-certificate `no` and `applied` produce only the hard gate
-- [ ] `bun run typecheck` and `bun test` pass twice
-- [ ] Desktop browser render matches the approved Virasat design language
+- [x] `bun run web` opens the mockup at `http://localhost:3000`
+- [x] Claims appear while the scripted interview advances
+- [x] EDLI is visibly marked as commonly missed
+- [x] Missing documents block claims without removing them
+- [x] Every claim shows its source and `[VERIFY]` when applicable
+- [x] Death-certificate `no` and `applied` produce only the hard gate
+- [x] `bun run typecheck` and `bun test` pass twice
+- [x] Desktop browser render matches the approved Virasat design language
 
 ## Explicitly out
 
@@ -69,4 +69,3 @@ The interview is mocked. The legal derivation is not.
 - Convex and persistence
 - Mobile or responsive layouts
 - Animations, loading states, toasts, and PDF generation
-
