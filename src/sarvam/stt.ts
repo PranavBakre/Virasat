@@ -23,6 +23,9 @@ export async function openTranscriptionStream(
   configureStreamingSocketForBun(socket);
 
   socket.on("message", (message) => {
+    // Sarvam reports rejected frames as an in-band {type:"error"} message and
+    // then closes cleanly. Dropping these made a validation error present itself
+    // as a dropped connection, with nothing in the logs. Never swallow them.
     if (message.type === "error") {
       console.log("Sarvam STT rejected a frame", message.data);
       return;
@@ -51,6 +54,13 @@ export function sendPcm16(socket: SttSocket, bytes: Uint8Array): boolean {
     socket.transcribe({
       audio: Buffer.from(bytes).toString("base64"),
       sample_rate: 16_000,
+      // The only value Sarvam accepts here is "audio/wav" — and it is a
+      // declared container, not a request to prepend a RIFF header: the bytes
+      // stay raw PCM16, described by `input_audio_codec` at connect. Sending
+      // "pcm_s16le" (the codec name, which reads like the honest answer) fails
+      // validation server-side, and Sarvam responds by closing the socket with
+      // code 1000 — a clean close that looks exactly like an idle timeout. That
+      // is what "voice connection constantly dropping" was.
       encoding: "audio/wav",
     });
     return true;
