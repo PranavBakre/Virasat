@@ -80,6 +80,31 @@ without resetting the interview. A provider without a configured key is marked
 unavailable. Without either key, the complete typed interview and deterministic
 checklist remain available.
 
+## Deploy to Cloudflare Workers
+
+The Worker serves the existing files in `web/` as static assets and handles the
+interview at `/ws`. The Bun server remains available for local development; the
+Worker entrypoint is `worker/index.ts`.
+
+```bash
+bun install
+bun run dev:worker             # Local Workers runtime at http://localhost:8787
+```
+
+Wrangler reads the existing `.env` during local development. Production keys
+must be stored as encrypted Worker secrets:
+
+```bash
+bunx wrangler login
+bunx wrangler secret put SARVAM_API_KEY
+bunx wrangler secret put OPENAI_API_KEY
+bun run deploy:worker
+```
+
+Either provider secret may be omitted. Typed interviews continue to work when
+no voice provider is configured. Model defaults and static-asset routing live in
+`wrangler.jsonc`.
+
 ## Documentation
 
 | | |
