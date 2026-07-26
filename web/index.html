@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ವಿರಾಸತ್ · Virasat</title>
+    <title>Virasat · ವಿರಾಸತ್</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,6 +15,9 @@
     <style>
       /* The register is a document. Digits must line up in the gutter. */
       .tnum { font-variant-numeric: tabular-nums; }
+
+      /* Stops a two-line question orphaning its last word. */
+      .balance { text-wrap: balance; }
 
       /* Keyboard focus must be visible on a light ground. */
       :focus-visible {
@@ -39,8 +42,8 @@
     <main class="mx-auto max-w-[1380px] px-9 py-7">
       <header class="mb-6 flex items-baseline justify-between gap-8 border-b border-rule pb-4">
         <div class="flex items-baseline gap-4">
-          <h1 class="font-voice text-[30px] leading-none text-indigo">ವಿರಾಸತ್</h1>
-          <p class="text-[15px] tracking-[0.02em] text-ink2">Virasat</p>
+          <h1 class="text-[21px] font-medium tracking-[0.01em] text-indigo">Virasat</h1>
+          <p class="font-voice text-[17px] text-ink2">ವಿರಾಸತ್</p>
         </div>
         <p class="text-right text-[14px] text-ink2">
           Karnataka · Hindu intestate succession · movable assets
@@ -63,11 +66,13 @@
           <!-- the live question -->
           <div class="mt-7">
             <p id="step-label" class="text-[13px] font-medium tracking-[0.06em] text-ink2"></p>
-            <p id="question-kn" class="mt-3 font-voice text-[29px] leading-[1.55] text-indigo">
-              ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಏನು ಸಲ್ಲಿಸಬೇಕು ಎಂಬುದನ್ನು ಒಟ್ಟಿಗೆ ನೋಡೋಣ.
+            <!-- English leads; Kannada sits under it, smaller. Never italic —
+                 slanted Kannada is not an idiomatic emphasis form. -->
+            <p id="question-en" class="balance mt-3 max-w-[38ch] font-voice text-[28px] leading-[1.35] text-indigo">
+              Let’s work out what your family can claim.
             </p>
-            <p id="question-en" class="mt-3 max-w-[52ch] font-voice text-[18px] italic leading-[1.6] text-ink2">
-              Let’s work out what your family can claim, and what you’ll need for each one.
+            <p id="question-kn" class="mt-3 max-w-[40ch] font-voice text-[19px] leading-[1.75] text-ink2">
+              ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಏನು ಸಲ್ಲಿಸಬೇಕು ಎಂಬುದನ್ನು ಒಟ್ಟಿಗೆ ನೋಡೋಣ.
             </p>
             <div id="answer-panel" class="mt-6"></div>
             <div id="document-panel" class="mt-7 hidden"></div>

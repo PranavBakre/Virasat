@@ -15,6 +15,45 @@ faces here, not in a page**), `web/landing.html`, `web/index.html`, and
 
 Routes: `/` is the landing page, `/app` is the interview.
 
+## Language order: English primary, Kannada secondary
+
+**English leads everywhere in the interface.** Kannada sits underneath it, smaller,
+in `ink2`.
+
+This is a demo-surface decision, not a product-values one: the people who judge,
+read, and share this are reading English. The Kannada is still authored and still
+spoken aloud — it is the voice layer, and it is what the actual user hears. It is
+just not the thing that has to be decoded first by someone scanning the screen.
+
+Concretely: English question at the large size in Tiro, Kannada beneath it at
+roughly two-thirds the size. Wordmark is `Virasat` with `ವಿರಾಸತ್` secondary.
+
+Never set Kannada in italic. Tiro Kannada ships an italic, but slanted Kannada is
+not an idiomatic emphasis form — use size and colour instead.
+
+## Copy rules — these apply to every page, and hardest to the landing page
+
+The single most common failure in this repo has been **writing paragraphs where a
+line would do.** Long copy is not thoroughness; on a landing page it is the thing
+that makes a good layout look bad.
+
+| Rule | Test |
+|---|---|
+| **One idea per section** | Can you state the section in its heading alone? If not, split it. |
+| **Two sentences maximum per block** | Three sentences means one is unnecessary. Cut it. |
+| **Never more than two rendered lines** | At reading width. A four-line paragraph is a wall. |
+| **Headings alone must carry the argument** | A reader who reads only headings should get the whole pitch. |
+| **Concrete nouns and numbers, not adjectives** | "Three separate forms" beats "a complex process". |
+| **One primary action** | Repeat the same CTA. Never offer a competing one. |
+| **Every sentence adds a new fact** | If it only rephrases the previous sentence, delete it. |
+| **Show, don't describe** | A real register excerpt beats any sentence about the register. |
+
+Write the sentence, then cut it in half. The halved version is almost always the
+one to ship.
+
+Body copy on the landing page runs at **17–19px**, not the 16px of the app's dense
+register — fewer words means they can be larger.
+
 ## The landing page
 
 Inverse of the app. The app is speech becoming record; the landing page makes you
@@ -270,8 +309,10 @@ A deliberate commitment, not an omission.
 ## What building.md still forbids
 
 `rules/building.md` bans loading states, animations, mobile responsiveness, and
-custom CSS. **That still holds.** The exceptions in `<style>` are the token
-config, `.tnum`, a visible `:focus-visible`, `prefers-reduced-motion`, and the
-print block — all structural, none decorative.
+custom CSS. **That still holds.** The exceptions in `<style>` are `.tnum`,
+`.balance` (`text-wrap: balance`, on every display heading so a two-line headline
+does not orphan its last word), the `.slip-*` static rotations, a visible
+`:focus-visible`, `prefers-reduced-motion`, and the print block — all structural,
+none decorative. Tokens live in `web/tokens.js`, not in a page.
 
 Desktop only. No responsive work.
