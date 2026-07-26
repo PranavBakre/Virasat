@@ -41,6 +41,10 @@ const worklet = Bun.file(new URL("./pcm-worklet.js", import.meta.url));
 const apiKey = getSarvamApiKey();
 const sarvam = apiKey ? createSarvamClient(apiKey) : null;
 const tokens = Bun.file(new URL("./tokens.js", import.meta.url));
+// The alternative landing page at /v2 — a separate design language, kept beside
+// the register system rather than replacing it so both can be compared.
+const landingV2 = Bun.file(new URL("./landing-v2.html", import.meta.url));
+const tokensV2 = Bun.file(new URL("./tokens-v2.js", import.meta.url));
 
 function initialSession(
   language: InterviewLanguage = "kn-IN",
@@ -214,6 +218,14 @@ const server = Bun.serve<Session>({
 
     if (url.pathname === "/tokens.js") {
       return new Response(tokens, { headers: { "Content-Type": "text/javascript" } });
+    }
+
+    if (url.pathname === "/tokens-v2.js") {
+      return new Response(tokensV2, { headers: { "Content-Type": "text/javascript" } });
+    }
+
+    if (url.pathname === "/v2") {
+      return new Response(landingV2, { headers: { "Content-Type": "text/html" } });
     }
 
     // The interview lives at /app. The landing page owns the root so the demo can

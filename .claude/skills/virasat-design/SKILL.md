@@ -15,6 +15,32 @@ faces here, not in a page**), `web/landing.html`, `web/index.html`, and
 
 Routes: `/` is the landing page, `/app` is the interview.
 
+## There is a second landing page at `/v2`, and that is deliberate
+
+`web/landing-v2.html` + `web/tokens-v2.js` are an **alternative design language**,
+commissioned directly and built beside this system rather than replacing it. Do
+not "fix" it to match this file, and do not merge its palette into `tokens.js` —
+`/app` depends on those tokens and would break.
+
+| | `/` and `/app` (this skill) | `/v2` |
+|---|---|---|
+| Concept | a ruled register — speech becoming record | a printed book — a public service |
+| Ground | `paper` #F4F1E9 | `bg` #F7F4EE |
+| Accent | `indigo` #23306B | `primary` #1D2951 |
+| Display face | Tiro Kannada | Cormorant Garamond |
+| Body face | Anek Latin | Inter |
+| Surfaces | hairlines, square, no shadows | hairlines, 3px radius, no shadows |
+| Motion | none | slow opacity/translate entrance |
+| Illustration | none | hand-authored SVG watercolour |
+
+**Only one can own `/` eventually.** That is a product decision, not a design one.
+Until it is made, both are live and comparable. If `/v2` wins, this file needs
+rewriting rather than patching — the two are not reconcilable halfway, and a blend
+of them would be worse than either.
+
+Note that the palettes are closer than they look: both are a deep navy-indigo on
+a warm off-white. The real divergence is typographic voice, motion, and imagery.
+
 ## Language order: English primary, Kannada secondary
 
 **English leads everywhere in the interface.** Kannada sits underneath it, smaller,
