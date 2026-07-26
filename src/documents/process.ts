@@ -83,3 +83,17 @@ export async function processDocument(
     };
   }
 }
+
+type DocumentProcessor = typeof processDocument;
+
+export async function processDocuments(
+  estateId: string,
+  files: readonly File[],
+  apiKey: string | null,
+  language: string,
+  processor: DocumentProcessor = processDocument,
+): Promise<StoredDocument[]> {
+  return Promise.all(
+    files.map((file) => processor(estateId, file, apiKey, language)),
+  );
+}

@@ -22,6 +22,7 @@ let state = {
   },
 };
 let socket;
+let chatMessages = [];
 let recording = false;
 let micPressed = false;
 let audioContext;
@@ -92,6 +93,17 @@ function connect() {
       }
     } else if (message.type === "transcript") {
       document.querySelector("#live-transcript").textContent = message.text;
+    } else if (message.type === "user_message") {
+      chatMessages.push({ id: message.id, role: "user", content: message.text });
+      renderConversation();
+    } else if (message.type === "chat_start") {
+      chatMessages.push({ id: message.id, role: "assistant", content: "" });
+    } else if (message.type === "chat_delta") {
+      const reply = chatMessages.find((entry) => entry.id === message.id);
+      if (reply) reply.content += message.text;
+      renderConversation();
+    } else if (message.type === "chat_end") {
+      renderConversation();
     } else if (message.type === "unclear") {
       setMicStatus("I could not place that answer. Please say it again or type it.");
     } else if (message.type === "tts_start") {
@@ -234,6 +246,7 @@ function renderAncillary() {
   shares.classList.toggle("hidden", !state.claimSet.sharesNote || !(state.claimSet.claims ?? []).length);
   shares.textContent = state.claimSet.sharesNote ?? "";
   renderEstateMap();
+  renderDocumentConclusions();
 }
 
 function renderEstateMap() {
@@ -264,7 +277,7 @@ function renderEstateMap() {
 }
 
 function renderConversation() {
-  document.querySelector("#transcript").innerHTML = state.transcript.map((entry, index) => {
+  const fixedHistory = state.transcript.map((entry, index) => {
     const question = entry.question ?? { "en-IN": entry.label };
     const localCopy = question[state.language];
     const translatedQuestion = state.language !== "en-IN" && localCopy
@@ -286,11 +299,30 @@ function renderConversation() {
       </div>
     </div>`;
   }).join("");
+  const chatHistory = chatMessages.map((entry) => entry.role === "user"
+    ? `<div class="mt-2 flex justify-end">
+        <div class="max-w-[82%] rounded-[14px] rounded-br-[3px] bg-indigo px-4 py-2.5 text-sheet">
+          <p class="whitespace-pre-line text-[15px] leading-[1.5]">${text(entry.content)}</p>
+        </div>
+      </div>`
+    : entry.content
+      ? `<div class="mt-5 flex items-end gap-2.5">
+          <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo font-voice text-[13px] text-sheet" aria-hidden="true">V</div>
+          <div class="max-w-[86%] rounded-[14px] rounded-bl-[3px] border border-ruleSoft bg-paper px-4 py-3">
+            <p class="whitespace-pre-line font-voice text-[17px] leading-[1.55] text-indigo">${text(entry.content)}</p>
+          </div>
+        </div>`
+      : "").join("");
+  document.querySelector("#transcript").innerHTML = fixedHistory + chatHistory;
   const question = state.question;
   // The interview can end because it finished or because a gate stopped it.
   // Announcing "your checklist is ready" over an empty register is the bug the
   // will path exposed — the closing line has to match what is actually there.
   const blockedEnd = (state.claimSet.gates ?? []).some((gate) => gate.blocking);
+  const hasGeneratedReply = chatMessages.some(
+    (entry) => entry.role === "assistant" && entry.content.trim(),
+  );
+  document.querySelector("#current-question").classList.toggle("hidden", hasGeneratedReply);
   document.querySelector("#step-label").textContent = question
     ? `QUESTION ${state.transcript.length + 1}`
     : blockedEnd ? "ONE STEP FIRST" : "INTERVIEW COMPLETE";
@@ -307,9 +339,9 @@ function renderConversation() {
     : question?.copy["kn-IN"] ?? (blockedEnd
       ? "ಸಲ್ಲಿಸುವ ಮೊದಲು ಒಂದು ವಿಷಯ ಇತ್ಯರ್ಥವಾಗಬೇಕು. ಅದು ಬಲಭಾಗದಲ್ಲಿದೆ."
       : "ನಿಮ್ಮ ಹಕ್ಕುಗಳ ಪಟ್ಟಿ ಸಿದ್ಧವಾಗಿದೆ.");
-  document.querySelector("#answer-form").classList.toggle("hidden", !question);
-  document.querySelector("#voice-note").classList.toggle("hidden", !question);
-  document.querySelector("#mic-button").disabled = !question || !state.voiceAvailable;
+  document.querySelector("#answer-form").classList.remove("hidden");
+  document.querySelector("#voice-note").classList.remove("hidden");
+  document.querySelector("#mic-button").disabled = !state.voiceAvailable;
   const providerName = state.provider === "openai" ? "OpenAI" : "Sarvam";
   document.querySelector("#voice-note").textContent = state.voiceAvailable
     ? `Using ${providerName}. Hold the microphone while you speak, or type your reply.`
@@ -322,7 +354,63 @@ function renderConversation() {
 }
 
 function renderDocuments() {
-  const panel = document.querySelector("#document-panel");
+  const panel = document.querySelector("#attachment-list");
+  const store = state.documentStore ?? {
+    documents: [],
+    estateMap: { requiredDocuments: [], missingDocuments: [] },
+  };
+  const files = store.documents ?? [];
+  panel.classList.toggle("hidden", !files.length);
+  panel.innerHTML = files.length
+    ? `<div class="flex gap-2 overflow-x-auto pb-1">
+      ${files.map((file) => `<article class="flex w-[210px] shrink-0 items-center gap-2 border border-ruleSoft bg-sheet px-2 py-1.5">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-4 w-4 shrink-0 fill-none stroke-indigo" stroke-width="1.7">
+          <path d="M8 12.5 13.5 7a3 3 0 0 1 4.2 4.2l-7.1 7.1a5 5 0 0 1-7.1-7.1l7.4-7.4"></path>
+        </svg>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-[13px] text-ink">${text(file.originalName)}</p>
+          <p class="text-[11px] ${file.status === "organized" ? "text-neem" : "text-ochreInk"}">${text(
+            file.status === "organized" ? "Filed" : file.status === "failed" ? "Could not read" : "Review on right",
+          )}</p>
+        </div>
+      </article>`).join("")}
+    </div>`
+    : "";
+}
+
+function documentConclusion(file) {
+  if (file.status === "failed") {
+    return {
+      conclusion: "Could not read",
+      why: file.error || "The parser did not return usable text.",
+    };
+  }
+  if (file.textPreview?.startsWith("PK")) {
+    return {
+      conclusion: file.matchedDocumentIds?.length ? `Likely ${file.title}` : "Not identified",
+      why: "The parser returned a ZIP that was not unpacked. Re-upload this file after the parser fix.",
+    };
+  }
+  if (file.status === "organized") {
+    return {
+      conclusion: file.title,
+      why: `Matched from the document text and identifying details · ${Math.round(file.confidence * 100)}% confidence.`,
+    };
+  }
+  if (file.matchedDocumentIds?.length) {
+    return {
+      conclusion: `Likely ${file.title}`,
+      why: "The document name or text matched, but identifying details were not strong enough to file it automatically.",
+    };
+  }
+  return {
+    conclusion: "Not identified",
+    why: "No reliable document type match was found in the extracted text.",
+  };
+}
+
+function renderDocumentConclusions() {
+  const host = document.querySelector("#document-conclusions");
   const store = state.documentStore ?? {
     documents: [],
     estateMap: { requiredDocuments: [], missingDocuments: [] },
@@ -331,103 +419,77 @@ function renderDocuments() {
   const requirements = store.estateMap?.requiredDocuments
     ?? store.estateMap?.missingDocuments
     ?? [];
-  panel.classList.remove("hidden");
-  panel.innerHTML = `<div class="border-t border-rule pt-5">
-    <div class="flex items-baseline justify-between gap-4">
-      <div>
-        <h3 class="text-[17px] font-medium text-ink">Document store</h3>
-        <p class="mt-1 text-[15px] text-ink2">Upload scans or PDFs. Virasat reads and files them against this estate.</p>
+  if (!files.length && !requirements.length) {
+    host.innerHTML = "";
+    return;
+  }
+
+  host.innerHTML = `<section class="border-b border-rule">
+    ${files.length ? `<div class="bg-paper px-7 py-[7px]">
+      <div class="flex items-baseline justify-between gap-4">
+        <h3 class="text-[13px] font-medium tracking-[0.06em] text-ink2">Document conclusions</h3>
+        <span class="tnum text-[13px] text-ink2">${files.length} reviewed</span>
       </div>
-      <span class="tnum text-[13px] text-ink2">${files.length} stored</span>
     </div>
-    <form id="document-upload-form" class="mt-4 border border-dashed border-rule bg-sheet p-4 transition-colors">
-      <label class="block text-[15px] font-medium text-indigo" for="document-upload">Drop documents here, or choose files</label>
-      <input id="document-upload" class="mt-2 block w-full text-[14px] text-ink2"
-        type="file" name="documents" accept=".pdf,.png,.jpg,.jpeg,.txt,.md,.csv,.json" multiple required>
-      <div class="mt-3 flex items-center justify-between gap-4">
-        <p class="text-[13px] text-ink2">PDF, image or text · up to 10 files · 20 MB each</p>
-        <button class="bg-indigo px-4 py-2 text-[15px] font-medium text-sheet" type="submit">Parse and organize</button>
-      </div>
-      <p id="document-upload-status" class="mt-2 min-h-5 text-[14px] text-ink2"></p>
-      <p class="mt-1 text-[12px] leading-[1.45] text-ink2">Scans and PDFs are sent to Sarvam Vision when connected. Originals remain in this estate workspace.</p>
-    </form>
-    ${files.length ? `<div class="mt-4">
-      <h4 class="text-[14px] font-medium text-ink">Organized documents</h4>
-      ${files.map((file) => `<article class="border-b border-ruleSoft py-[9px]">
-        <div class="flex items-baseline justify-between gap-4">
-          <p class="text-[15px] font-medium ${file.status === "organized" ? "text-ink" : "text-ochreInk"}">${text(file.title)}</p>
-          <span class="text-[13px] ${file.status === "organized" ? "text-neem" : "text-ochreInk"}">${text(
-            file.status === "organized" ? "Filed" : file.status === "failed" ? "Could not read" : "Needs review",
-          )}</span>
+    ${files.map((file) => {
+      const result = documentConclusion(file);
+      return `<article class="grid grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-5 border-t border-ruleSoft px-7 py-3">
+        <div class="min-w-0">
+          <p class="truncate text-[14px] text-ink">${text(file.originalName)}</p>
+          <p class="mt-0.5 text-[12px] text-ink2">${text(file.category)}</p>
         </div>
-        <p class="text-[13px] text-ink2">${text(file.originalName)} · ${text(file.category)}</p>
-        ${file.error ? `<p class="mt-1 text-[13px] text-ochreInk">${text(file.error)}</p>` : ""}
-      </article>`).join("")}
-    </div>` : ""}
-    ${requirements.length ? `<div class="mt-5">
-      <h4 class="text-[14px] font-medium text-ink">Claim documents</h4>
-      <p class="mt-1 text-[13px] text-ink2">Keep every item accurate. You can correct documents marked in hand.</p>
-      ${requirements.map((document) => `<label class="flex items-start gap-3 border-b border-ruleSoft py-[9px]">
-        <input class="mt-1 h-[15px] w-[15px] accent-indigo" type="checkbox"
-          data-document-id="${text(document.id)}" ${document.have === "yes" ? "checked" : ""}>
-        <span class="min-w-0">
-          <span class="block text-[15px]">${text(document.label)}</span>
-          <span class="block text-[13px] ${document.have === "no" ? "text-ochreInk" : "text-ink2"}">${
-            document.have === "yes"
-              ? "In hand"
-              : document.have === "no"
-                ? "Still to get"
-                : "Not yet confirmed"
-          } · needed for ${document.neededFor.length} ${document.neededFor.length === 1 ? "claim" : "claims"}</span>
-        </span>
-      </label>`).join("")}
-    </div>` : ""}
-  </div>`;
-  panel.querySelectorAll("[data-document-id]").forEach((input) => {
+        <div>
+          <p class="text-[14px] font-medium ${file.status === "organized" ? "text-neem" : "text-ochreInk"}">${text(result.conclusion)}</p>
+          <p class="mt-0.5 text-[13px] leading-[1.45] text-ink2">${text(result.why)}</p>
+        </div>
+      </article>`;
+    }).join("")}` : ""}
+    ${requirements.length ? `<div class="border-t border-rule bg-paper px-7 py-[7px]">
+      <h3 class="text-[13px] font-medium tracking-[0.06em] text-ink2">Claim documents</h3>
+    </div>
+    ${requirements.map((document) => `<label class="flex items-start gap-3 border-t border-ruleSoft px-7 py-2.5">
+      <input class="mt-1 h-[15px] w-[15px] accent-indigo" type="checkbox"
+        data-document-id="${text(document.id)}" ${document.have === "yes" ? "checked" : ""}>
+      <span class="min-w-0 flex-1">
+        <span class="block text-[14px]">${text(document.label)}</span>
+        <span class="block text-[12px] ${document.have === "no" ? "text-ochreInk" : "text-ink2"}">${
+          document.have === "yes"
+            ? "In hand"
+            : document.have === "no"
+              ? "Still to get"
+              : "Not yet confirmed"
+        } · ${document.neededFor.length} ${document.neededFor.length === 1 ? "claim" : "claims"}</span>
+      </span>
+    </label>`).join("")}` : ""}
+  </section>`;
+
+  host.querySelectorAll("[data-document-id]").forEach((input) => {
     input.addEventListener("change", () => send({
       type: "set_document",
       documentId: input.dataset.documentId,
       status: input.checked ? "yes" : "no",
     }));
   });
-  const uploadForm = document.querySelector("#document-upload-form");
-  uploadForm.addEventListener("submit", uploadDocuments);
-  uploadForm.addEventListener("dragover", (event) => {
-    if (!event.dataTransfer?.types.includes("Files")) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-    uploadForm.classList.add("border-indigo", "bg-paper");
-  });
-  uploadForm.addEventListener("dragleave", (event) => {
-    if (event.relatedTarget && uploadForm.contains(event.relatedTarget)) return;
-    uploadForm.classList.remove("border-indigo", "bg-paper");
-  });
-  uploadForm.addEventListener("drop", (event) => {
-    if (!event.dataTransfer?.files.length) return;
-    event.preventDefault();
-    uploadForm.classList.remove("border-indigo", "bg-paper");
-    uploadDocumentFiles(uploadForm, [...event.dataTransfer.files]);
-  });
 }
 
-async function uploadDocuments(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const input = form.querySelector("#document-upload");
-  await uploadDocumentFiles(form, [...input.files]);
+function setDocumentUploadStatus(message) {
+  const status = document.querySelector("#document-upload-status");
+  status.textContent = message;
+  status.classList.toggle("hidden", !message);
 }
 
-async function uploadDocumentFiles(form, files) {
+async function uploadDocumentFiles(files) {
   if (!files.length) return;
-  const status = form.querySelector("#document-upload-status");
-  const button = form.querySelector("button");
+  const button = document.querySelector("#attach-button");
   if (button.disabled) return;
   if (files.length > 10) {
-    status.textContent = "Choose up to 10 documents at a time.";
+    setDocumentUploadStatus("Choose up to 10 documents at a time.");
     return;
   }
   button.disabled = true;
-  status.textContent = `Reading ${files.length} ${files.length === 1 ? "document" : "documents"}…`;
+  setDocumentUploadStatus(
+    `Reading ${files.length} ${files.length === 1 ? "document" : "documents"}…`,
+  );
   const body = new FormData();
   for (const file of files) body.append("documents", file);
   body.append("language", state.language);
@@ -440,9 +502,16 @@ async function uploadDocumentFiles(form, files) {
     if (!response.ok) throw new Error(result.error ?? "Documents could not be read.");
     state = { ...state, ...result };
     render();
+    setDocumentUploadStatus(
+      `${files.length} ${files.length === 1 ? "document" : "documents"} added. Conclusions are on the right.`,
+    );
   } catch (error) {
-    status.textContent = error instanceof Error ? error.message : "Documents could not be read.";
+    setDocumentUploadStatus(
+      error instanceof Error ? error.message : "Documents could not be read.",
+    );
+  } finally {
     button.disabled = false;
+    document.querySelector("#document-upload").value = "";
   }
 }
 
@@ -531,7 +600,7 @@ function setMicRecording(active) {
 }
 
 async function startRecording() {
-  if (recording || !state.question) return;
+  if (recording || !state.voiceAvailable) return;
   micPressed = true;
   if (!audioReady) setMicStatus("Preparing the microphone…");
 
@@ -551,7 +620,7 @@ async function startRecording() {
   sttReady = false;
   stopRequested = false;
   recording = true;
-  send({ type: "stt_start", questionId: state.question.id });
+  send({ type: "stt_start", questionId: state.question?.id ?? "chat" });
   setMicRecording(true);
   // Own this status locally. It used to be cleared only by the server's stt_ready,
   // so any hiccup on that round trip left "Preparing the microphone…" on screen
@@ -583,8 +652,8 @@ document.querySelector("#answer-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const input = document.querySelector("#typed-answer");
   const value = input.value.trim();
-  if (!value || !state.question) return;
-  send({ type: "typed_answer", text: value, questionId: state.question.id });
+  if (!value) return;
+  send({ type: "chat", text: value });
   input.value = "";
   document.querySelector("#live-transcript").textContent = "";
   setMicStatus("Reading your answer…");
@@ -595,6 +664,29 @@ document.querySelector("#typed-answer").addEventListener("keydown", (event) => {
     document.querySelector("#answer-form").requestSubmit();
   }
 });
+const attachmentButton = document.querySelector("#attach-button");
+const documentInput = document.querySelector("#document-upload");
+const composer = document.querySelector("#composer");
+attachmentButton.addEventListener("click", () => documentInput.click());
+documentInput.addEventListener("change", () => {
+  void uploadDocumentFiles([...documentInput.files]);
+});
+composer.addEventListener("dragover", (event) => {
+  if (!event.dataTransfer?.types.includes("Files")) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+  composer.classList.add("border-indigo");
+});
+composer.addEventListener("dragleave", (event) => {
+  if (event.relatedTarget && composer.contains(event.relatedTarget)) return;
+  composer.classList.remove("border-indigo");
+});
+composer.addEventListener("drop", (event) => {
+  if (!event.dataTransfer?.files.length) return;
+  event.preventDefault();
+  composer.classList.remove("border-indigo");
+  void uploadDocumentFiles([...event.dataTransfer.files]);
+});
 document.querySelector("#language").addEventListener("change", (event) => {
   send({ type: "set_language", language: event.target.value });
 });
@@ -602,7 +694,10 @@ document.querySelector("#provider").addEventListener("change", (event) => {
   if (recording) stopRecording();
   send({ type: "set_provider", provider: event.target.value });
 });
-document.querySelector("#reset-button").addEventListener("click", () => send({ type: "reset" }));
+document.querySelector("#reset-button").addEventListener("click", () => {
+  chatMessages = [];
+  send({ type: "reset" });
+});
 const micButton = document.querySelector("#mic-button");
 micButton.addEventListener("pointerdown", (event) => {
   // Retargets pointerup to this button even if the pointer leaves it mid-press.

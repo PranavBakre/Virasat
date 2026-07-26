@@ -6,6 +6,7 @@ const TERMINAL_STATES = new Set(["Completed", "PartiallyCompleted", "Failed"]);
 type ApiObject = Record<string, unknown>;
 type FetchInput = Parameters<typeof fetch>[0];
 type Fetcher = (input: FetchInput, init?: RequestInit) => Promise<Response>;
+type PreparedUpload = { name: string; bytes: Uint8Array; type: string };
 
 type RateLimitedRequesterOptions = {
   fetcher?: Fetcher;
@@ -102,7 +103,7 @@ function urlFromMap(value: unknown, filename?: string): string {
   throw new Error("Document parser did not return a usable file URL");
 }
 
-function prepareUpload(file: File, bytes: Uint8Array): { name: string; bytes: Uint8Array; type: string } {
+function prepareUpload(file: File, bytes: Uint8Array): PreparedUpload {
   if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
     return { name: /\.pdf$/i.test(file.name) ? file.name : `${file.name}.pdf`, bytes, type: "application/pdf" };
   }
@@ -113,6 +114,24 @@ function prepareUpload(file: File, bytes: Uint8Array): { name: string; bytes: Ui
     bytes: zipSync({ [imageName]: bytes }),
     type: "application/zip",
   };
+}
+
+export async function uploadToSignedUrl(
+  uploadUrl: string,
+  upload: PreparedUpload,
+  fetcher: Fetcher = fetch,
+): Promise<void> {
+  const response = await fetcher(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": upload.type,
+      "x-ms-blob-type": "BlockBlob",
+    },
+    body: Uint8Array.from(upload.bytes).buffer,
+  });
+  if (!response.ok) {
+    throw new Error(`Document upload failed (${response.status}): ${await response.text()}`);
+  }
 }
 
 async function waitForCompletion(jobId: string, apiKey: string): Promise<void> {
@@ -131,8 +150,21 @@ async function waitForCompletion(jobId: string, apiKey: string): Promise<void> {
   throw new Error("Document parsing timed out");
 }
 
-function extractedText(bytes: Uint8Array, contentType: string): string {
-  if (!contentType.includes("zip")) return strFromU8(bytes);
+function hasZipSignature(bytes: Uint8Array): boolean {
+  return bytes.length >= 4
+    && bytes[0] === 0x50
+    && bytes[1] === 0x4b
+    && (
+      (bytes[2] === 0x03 && bytes[3] === 0x04)
+      || (bytes[2] === 0x05 && bytes[3] === 0x06)
+      || (bytes[2] === 0x07 && bytes[3] === 0x08)
+    );
+}
+
+export function extractDigitizedText(bytes: Uint8Array, contentType: string): string {
+  if (!contentType.toLowerCase().includes("zip") && !hasZipSignature(bytes)) {
+    return strFromU8(bytes);
+  }
   const files = unzipSync(bytes);
   const preferred = Object.entries(files).filter(([name]) => /\.(md|html|json|txt)$/i.test(name));
   return preferred
@@ -168,12 +200,7 @@ export async function digitizeDocument(
     body: JSON.stringify({ job_id: jobId, files: [upload.name] }),
   });
   const uploadUrl = urlFromMap(links.upload_urls, upload.name);
-  const uploaded = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": upload.type },
-    body: Uint8Array.from(upload.bytes).buffer,
-  });
-  if (!uploaded.ok) throw new Error(`Document upload failed (${uploaded.status})`);
+  await uploadToSignedUrl(uploadUrl, upload);
 
   await apiJson(`${BASE_URL}/${jobId}/start`, apiKey, {
     method: "POST",
@@ -190,7 +217,7 @@ export async function digitizeDocument(
   const downloadUrl = urlFromMap(downloads.download_urls);
   const output = await fetch(downloadUrl);
   if (!output.ok) throw new Error(`Document output download failed (${output.status})`);
-  return extractedText(
+  return extractDigitizedText(
     new Uint8Array(await output.arrayBuffer()),
     output.headers.get("content-type") ?? "application/zip",
   );

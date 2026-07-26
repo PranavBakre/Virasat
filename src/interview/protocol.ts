@@ -9,6 +9,8 @@ export type ClientMessage =
   | { type: "start"; language: InterviewLanguage }
   | { type: "set_language"; language: InterviewLanguage }
   | { type: "set_provider"; provider: VoiceProvider }
+  | { type: "chat"; text: string }
+  | { type: "stop_generation" }
   | { type: "typed_answer"; text: string; questionId: string }
   | { type: "stt_start"; questionId: string }
   | { type: "stt_stop" }
@@ -21,6 +23,11 @@ export type ServerMessage =
   | { type: "transcript"; text: string; final: boolean }
   | { type: "answer"; questionId: string; text: string; value: string }
   | { type: "unclear"; questionId: string }
+  | { type: "user_message"; id: string; text: string }
+  | { type: "chat_start"; id: string }
+  | { type: "chat_delta"; id: string; text: string }
+  | { type: "chat_tool"; id: string; name: string; status: "started" | "completed" }
+  | { type: "chat_end"; id: string; aborted?: boolean }
   | { type: "tts_start"; contentType: string }
   | { type: "tts_end" }
   | { type: "error"; code: string; message: string };
@@ -47,6 +54,9 @@ export function parseClientMessage(raw: string): ClientMessage | null {
     && isShortString(message.text, 500) && isShortString(message.questionId, 80)) {
     return { type: "typed_answer", text: message.text, questionId: message.questionId };
   }
+  if (message.type === "chat" && isShortString(message.text, 500)) {
+    return { type: "chat", text: message.text };
+  }
   if (message.type === "stt_start" && isShortString(message.questionId, 80)) {
     return { type: "stt_start", questionId: message.questionId };
   }
@@ -59,7 +69,9 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       status: message.status,
     };
   }
-  if (message.type === "stt_stop" || message.type === "reset") {
+  if (message.type === "stt_stop"
+    || message.type === "reset"
+    || message.type === "stop_generation") {
     return { type: message.type };
   }
   return null;

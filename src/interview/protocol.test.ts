@@ -17,6 +17,12 @@ describe("browser protocol validation", () => {
     expect(parseClientMessage('{"type":"set_provider","provider":"openai"}')).toEqual({
       type: "set_provider", provider: "openai",
     });
+    expect(parseClientMessage('{"type":"chat","text":"Sorry, could you repeat that?"}')).toEqual({
+      type: "chat", text: "Sorry, could you repeat that?",
+    });
+    expect(parseClientMessage('{"type":"stop_generation"}')).toEqual({
+      type: "stop_generation",
+    });
   });
 
   test("rejects invalid languages, statuses and oversized messages", () => {
@@ -26,5 +32,6 @@ describe("browser protocol validation", () => {
       '{"type":"set_document","documentId":"x","status":"maybe"}',
     )).toBeNull();
     expect(parseClientMessage("x".repeat(1_001))).toBeNull();
+    expect(parseClientMessage('{"type":"chat","text":"   "}')).toBeNull();
   });
 });

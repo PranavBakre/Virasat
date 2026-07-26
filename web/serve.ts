@@ -5,7 +5,7 @@ import {
   MAX_DOCUMENT_SIZE,
   MAX_DOCUMENTS_PER_UPLOAD,
   isSupportedDocument,
-  processDocument,
+  processDocuments,
 } from "../src/documents/process.ts";
 import {
   addStoredDocument,
@@ -21,6 +21,7 @@ import {
   applyAnswerToCurrentQuestion,
   nextQuestion,
 } from "../src/interview/state.ts";
+import { runAgentTurn } from "../src/interview/agent.ts";
 import { extractAnswer } from "../src/interview/extract.ts";
 import type { QuestionCopy } from "../src/interview/questions.ts";
 import { parseClientMessage, type ServerMessage } from "../src/interview/protocol.ts";
@@ -208,12 +209,18 @@ async function ensureSarvamStream(
 async function speakQuestion(ws: Bun.ServerWebSocket<Session>): Promise<void> {
   const question = nextQuestion(ws.data.profile);
   if (!question || !providers[ws.data.provider]) return;
+  await speakText(ws, question.copy[ws.data.language]);
+}
 
+async function speakText(
+  ws: Bun.ServerWebSocket<Session>,
+  text: string,
+): Promise<void> {
+  if (!text.trim() || !providers[ws.data.provider]) return;
   const speech = ws.data.speech + 1;
   ws.data.speech = speech;
   send(ws, { type: "tts_start", contentType: "audio/mpeg" });
   try {
-    const text = question.copy[ws.data.language];
     const audio = ws.data.provider === "sarvam"
       ? streamSarvamSpeech(sarvam!, text, ws.data.language)
       : streamOpenAISpeech(openai!, text, ws.data.language);
@@ -225,6 +232,61 @@ async function speakQuestion(ws: Bun.ServerWebSocket<Session>): Promise<void> {
     console.log(`${ws.data.provider} TTS unavailable`, error);
   } finally {
     if (ws.data.speech === speech) send(ws, { type: "tts_end" });
+  }
+}
+
+async function runChat(
+  ws: Bun.ServerWebSocket<Session>,
+  userText: string,
+): Promise<void> {
+  if (ws.data.busy) {
+    send(ws, { type: "error", code: "busy", message: "Still reading your last message." });
+    return;
+  }
+  ws.data.busy = true;
+  const id = crypto.randomUUID();
+  const generation = ws.data.generation;
+  let response = "";
+  send(ws, { type: "user_message", id: crypto.randomUUID(), text: userText });
+  send(ws, { type: "chat_start", id });
+  try {
+    ws.data.profile = await runAgentTurn({
+      profile: ws.data.workspace.profile,
+      userText,
+      language: ws.data.language,
+      provider: ws.data.provider,
+      sarvam,
+      openai,
+      callbacks: {
+        aborted: () => !isCurrentGeneration(generation, ws.data.generation),
+        onDelta: (text) => {
+          if (!isCurrentGeneration(generation, ws.data.generation)) return;
+          response += text;
+          send(ws, { type: "chat_delta", id, text });
+        },
+        onTool: (name, status) => {
+          if (isCurrentGeneration(generation, ws.data.generation)) {
+            send(ws, { type: "chat_tool", id, name, status });
+          }
+        },
+        onProfile: async (profile) => {
+          if (!isCurrentGeneration(generation, ws.data.generation)) return;
+          ws.data.profile = profile;
+          ws.data.workspace.profile = profile;
+          await saveProfile(ws.data.workspace, profile);
+          sendState(ws);
+        },
+      },
+    });
+  } catch (error) {
+    console.log(`${ws.data.provider} chat unavailable`, error);
+  } finally {
+    const aborted = !isCurrentGeneration(generation, ws.data.generation);
+    send(ws, { type: "chat_end", id, ...(aborted ? { aborted: true } : {}) });
+    if (!aborted) ws.data.busy = false;
+  }
+  if (response && isCurrentGeneration(generation, ws.data.generation)) {
+    void speakText(ws, response);
   }
 }
 
@@ -301,7 +363,7 @@ async function finishSarvamStt(ws: Bun.ServerWebSocket<Session>): Promise<void> 
   ws.data.latestTranscript = "";
   if (questionId && transcript) {
     send(ws, { type: "transcript", text: transcript, final: true });
-    await applyTranscript(ws, questionId, transcript);
+    await runChat(ws, transcript);
   } else if (questionId) {
     send(ws, { type: "unclear", questionId });
   }
@@ -321,7 +383,7 @@ async function finishOpenAIStt(ws: Bun.ServerWebSocket<Session>): Promise<void> 
       return;
     }
     send(ws, { type: "transcript", text: transcript, final: true });
-    await applyTranscript(ws, questionId, transcript);
+    await runChat(ws, transcript);
   } catch (error) {
     console.log("OpenAI transcription unavailable", error);
     send(ws, {
@@ -388,10 +450,12 @@ const server = Bun.serve<Session>({
         );
       }
 
-      const processed = [];
-      for (const file of files) {
-        processed.push(await processDocument(estateId, file, sarvamApiKey, language));
-      }
+      const processed = await processDocuments(
+        estateId,
+        files,
+        sarvamApiKey,
+        language,
+      );
       for (const document of processed) {
         addStoredDocument(workspace, document);
         workspace.profile = applyDocumentMatches(workspace.profile, document);
@@ -497,6 +561,12 @@ const server = Bun.serve<Session>({
         if (message.provider === "sarvam") void ensureSarvamStream(ws);
       } else if (message.type === "typed_answer") {
         await applyTranscript(ws, message.questionId, message.text);
+      } else if (message.type === "chat") {
+        await runChat(ws, message.text);
+      } else if (message.type === "stop_generation") {
+        ws.data.generation += 1;
+        ws.data.busy = false;
+        ws.data.speech += 1;
       } else if (message.type === "set_document") {
         const knownIds = new Set(
           deriveClaims(ws.data.profile).claims.flatMap((claim) =>
@@ -533,7 +603,9 @@ const server = Bun.serve<Session>({
         if (ws.data.provider === "sarvam") void ensureSarvamStream(ws);
       } else if (message.type === "stt_start") {
         const current = nextQuestion(ws.data.profile);
-        if (!providers[ws.data.provider] || current?.id !== message.questionId) {
+        const validChatTarget = message.questionId === "chat"
+          || current?.id === message.questionId;
+        if (!providers[ws.data.provider] || !validChatTarget) {
           send(ws, { type: "error", code: "voice_unavailable", message: "Use typed input." });
           return;
         }
