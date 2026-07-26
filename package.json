@@ -2,16 +2,18 @@
   "name": "virasat",
   "version": "0.1.0",
   "private": true,
-  "description": "Voice agent (Kannada/English) that maps every claim a family can file after a death in India.",
+  "description": "Kannada, Hindi, and English voice interview that maps estate claims deterministically.",
   "type": "module",
   "scripts": {
-    "dev": "bunx convex dev",
+    "dev": "bun run --hot web/serve.ts",
     "web": "bun run --hot web/serve.ts",
+    "convex": "bunx convex dev",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },
   "dependencies": {
-    "convex": "^1.17.0"
+    "convex": "^1.17.0",
+    "sarvamai": "^1.1.7"
   },
   "devDependencies": {
     "@types/bun": "latest",

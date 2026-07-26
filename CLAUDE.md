@@ -2,7 +2,7 @@
 
 ## Project overview
 
-virasat is a voice agent (Kannada/English) for families settling an estate after
+virasat is a voice agent (Kannada/Hindi/English) for families settling an estate after
 a death in India. It interviews the person handling the paperwork, derives which
 claims that family can file from a hardcoded rules table, and outputs a
 checklist per claim: where to file, which documents are needed, what's missing.
@@ -10,7 +10,7 @@ checklist per claim: where to file, which documents are needed, what's missing.
 Built for the **Sarvam Epoch Buildathon**, Sunday 26 July, Razorpay Arena.
 Demos 6:30 PM IST. Selected Sarvam capability: **Voice Experience** (2.5×).
 
-**Stack:** Bun · TypeScript · Convex (backend + DB) · Sarvam (Saaras v3 STT,
+**Stack:** Bun · TypeScript · Bun WebSocket server · Sarvam (Saaras v3 STT,
 Sarvam-30B chat, Bulbul v3 TTS) · Tailwind CDN, no build step.
 
 **Scope:** Karnataka · Hindu Succession Act intestate path · movable assets.
@@ -125,15 +125,15 @@ Someone may be using this within a week of a death.
 
 ```bash
 bun install
-bun run web           # Iteration 0 — scripted interview + live checklist
-bun run dev           # Iteration 1 Convex backend
+bun run web           # Voice/text interview + live checklist
+bun run dev           # Same server with hot reload
+bun run convex        # Reserved persistence backend (not in the Iteration 1 voice path)
 bun run typecheck
 bun test
 ```
 
-`SARVAM_API_KEY` goes in `.env` **and** in the Convex deployment
-(`bunx convex env set SARVAM_API_KEY sk_…`) — actions read the deployment's
-environment, not your shell's. A 401 from `convex/turn.ts` is almost always this.
+`SARVAM_API_KEY` goes in `.env` for the Bun server. It never reaches the
+browser. Without it, the typed interview and deterministic checklist still run.
 
 ## Checkpoints
 

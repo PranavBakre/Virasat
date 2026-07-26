@@ -19,7 +19,14 @@ Two different header conventions, depending on the endpoint. This trips people u
 
 The chat endpoint is OpenAI-shaped; the speech endpoints are Sarvam-native.
 
-## Speech-to-text
+## Streaming speech-to-text
+
+Iteration 1 uses `client.speechToTextStreaming.connect()` from the official
+`sarvamai` TypeScript SDK. The browser captures mono audio in an AudioWorklet,
+resamples it to 16 kHz, encodes PCM16, and sends binary chunks to Bun. Bun alone
+opens the Sarvam socket, pinned to `kn-IN`, `hi-IN`, or `en-IN`.
+
+## REST speech-to-text (fallback reference)
 
 ```
 POST https://api.sarvam.ai/speech-to-text
@@ -83,6 +90,11 @@ per chunk**. Decode and concatenate before playing.
 
 Note: `pitch` is v2-only. Setting it on v3 does nothing.
 
+Iteration 1 uses the SDK's typed `client.textToSpeech.convertStream()` with
+`bulbul:v3` and relays MP3 chunks over the existing browser↔Bun WebSocket. In
+`sarvamai@1.1.7`, the separate TTS WebSocket connect type accepts only
+`bulbul:v2`; Virasat does not cast around that limitation.
+
 ## Chat completions
 
 ```
@@ -119,6 +131,10 @@ the model classifies what was said, it does not decide what is owed.
 
 Other params: `top_p`, `max_tokens` (default 2048), `stream`, `reasoning_effort`
 (`low` | `medium` | `high`), `tools`.
+
+SDK note: `sarvamai@1.1.7` exposes `client.chat.completions(request)`, but its
+request declaration omits `response_format`. Virasat uses a narrow request-type
+intersection; the SDK serializes the complete object and sends the JSON schema.
 
 ## Not used in v0.1
 

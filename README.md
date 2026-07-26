@@ -7,7 +7,7 @@ and pension offices. Each has a different process and a different document list.
 Nobody tells the family the full picture, so claims get missed or abandoned —
 money sits unclaimed in accounts and EPFO ledgers for years.
 
-virasat is a voice agent (Kannada/English) that interviews the person handling
+virasat is a voice agent (Kannada/Hindi/English) that interviews the person handling
 the estate, derives which claims that family can file from a rules table built on
 the RBI 2025 deceased-claims directions, the Hindu Succession Act, and EPFO
 forms — and outputs a checklist per claim: **where to file, what documents are
@@ -33,10 +33,10 @@ still missing.
 ## How it works
 
 ```
-speech (kn-IN / en-IN)
+speech (kn-IN / hi-IN / en-IN)
   → Sarvam Saaras v3            transcript
   → constrained extraction      one typed answer, one field
-  → EstateProfile               Convex doc
+  → EstateProfile               Bun WebSocket session
   → rules engine                pure function, no model
   → checklist + next question
   → Sarvam Bulbul v3            spoken back
@@ -54,22 +54,25 @@ away. A hallucinated document sends them chasing paperwork that doesn't exist.
 
 ## Stack
 
-Bun · TypeScript · Convex (backend + DB) · Sarvam (Saaras v3 STT, Sarvam-30B
+Bun · TypeScript · Sarvam (Saaras v3 STT, Sarvam-30B
 chat, Bulbul v3 TTS) · Tailwind CDN.
 
 ## Run it
 
 ```bash
 bun install
-bun run web                   # Iteration 0 — scripted interview + live checklist
+bun run dev                   # Voice/text server with hot reload
+# or: bun run web
 ```
 
-Iteration 1 adds Sarvam voice and secondary text chat. At that point, copy
-`.env.example` to `.env` and set the key in the Convex deployment:
+Copy `.env.example` to `.env` and set the server-local key:
 
 ```bash
-bunx convex env set SARVAM_API_KEY sk_…
+SARVAM_API_KEY=sk_…
 ```
+
+Without a key, the complete typed interview and deterministic checklist remain
+available; microphone STT, model extraction, and spoken questions are disabled.
 
 ## Documentation
 
@@ -84,12 +87,12 @@ bunx convex env set SARVAM_API_KEY sk_…
 
 ## Status
 
-Iteration 0 is complete.
+Iterations 0 and 1 are complete; live-key voice verification is still required.
 
 | # | Iteration | Status |
 |---|---|---|
 | 0 | Web claims mockup — scripted interview + real checklist | complete |
-| 1 | Voice interview with secondary text chat | not started |
+| 1 | Voice interview with secondary text chat | implemented |
 
 ## A caution
 

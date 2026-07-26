@@ -233,14 +233,12 @@ generic list.
 | `src/interview/questions.ts` | Question bank, keyed to profile fields | `types.ts` |
 | `src/interview/state.ts` | `nextQuestion(profile) → Question \| null`. Pure. | `questions.ts`, `types.ts` |
 | `src/interview/extract.ts` | transcript + pending question → typed answer | `sarvam/chat.ts` |
-| `src/sarvam/stt.ts` | `transcribe(audio) → { transcript, languageCode }` | Sarvam API |
-| `src/sarvam/tts.ts` | `speak(text, lang) → audio buffer` | Sarvam API |
+| `src/sarvam/stt.ts` | Browser PCM chunks → streaming transcript | Sarvam SDK |
+| `src/sarvam/tts.ts` | Authored question → streamed audio chunks | Sarvam SDK |
 | `src/sarvam/chat.ts` | Constrained JSON completion | Sarvam API |
-| `convex/schema.ts` | `sessions` table — one doc per interview | — |
-| `convex/sessions.ts` | `create`, `get`, `applyAnswer`, `setDocumentStatus` | `src/rules/` |
-| `convex/turn.ts` | `"use node"` action: audio → STT → extract → mutation | `src/sarvam/`, `src/interview/` |
-| `web/serve.ts` | Iteration 0 static server + local derive endpoint | `rules/` |
-| `web/app.js` | Scripted demo state, document controls, render | local derive endpoint |
+| `src/interview/protocol.ts` | Validated multiplexed WebSocket events | — |
+| `web/serve.ts` | Session state, Sarvam orchestration, static assets | rules + interview + Sarvam |
+| `web/app.js` | Voice/text interview, document controls, register render | one app WebSocket |
 | `web/index.html` | Virasat two-column demo surface | Tailwind CDN |
 
 **Dependency rule:** `src/rules/` imports nothing from `src/sarvam/` or
@@ -313,47 +311,20 @@ The nominee nudge is deliberate product design, not filler: it is the only
 output addressed to the living person rather than the estate, and it is the
 thing that makes someone remember this product a year later.
 
-## Convex
+## Iteration 1 session transport
 
-Added in Iteration 1 for the real voice/chat interview. One table, one action,
-and two thin function files.
+One in-memory interview session lives on each Bun WebSocket. The same socket
+multiplexes bounded control JSON, PCM microphone chunks, transcripts,
+profile/ClaimSet state, and TTS MP3 chunks. The API key remains server-only.
 
-```ts
-// convex/schema.ts
-sessions: defineTable({
-  profile: v.any(),        // EstateProfile — deliberately untyped in the DB,
-                           // the TS type in src/rules/types.ts is the contract
-  language: v.string(),    // "kn-IN" | "en-IN", follows STT detection
-  transcript: v.array(v.object({ q: v.string(), a: v.string() })),
-  createdAt: v.number(),
-})
-```
+The profile is the only stored input to `deriveClaims()`; the ClaimSet is
+recomputed after every accepted answer or document update and is never
+materialized. Refresh deliberately starts a new buildathon session. Convex
+remains installed for a later persistence iteration, but is not in the live
+voice path.
 
-**Why Convex earns its place here** — it is not just storage:
-
-1. **The live checklist is free.** `useQuery(api.sessions.get)` re-runs on every
-   write. The right-hand column filling in mid-conversation — the thing the
-   whole demo is built around — is a reactive subscription, not code we write.
-   In the in-memory design that was a polling loop or a websocket.
-2. **Actions hold the Sarvam keys.** The API key never reaches the browser.
-3. **The session survives a refresh.** On stage, a browser crash at 6:29 PM
-   stops being fatal.
-
-**Where the derivation runs, and why it matters:** `deriveClaims()` is called
-inside the Convex query, on the stored profile — not stored as a materialized
-field. Claims are always recomputed from the profile, so a fix to the rules
-table takes effect on existing sessions immediately. Never persist a derived
-`ClaimSet`; a stale entitlement list outliving the rule that produced it is a
-correctness bug with legal consequences.
-
-**The dependency arrow is unchanged.** `src/rules/` imports nothing from
-`convex/`. Convex functions import the rules engine, call it, and return the
-result. In Iteration 0 the engine runs behind the local `web/serve.ts` endpoint
-with no Convex deployment and no network, which keeps the mockup shippable
-before any voice backend exists and keeps the rules unit-testable.
-
-`convex/turn.ts` needs `"use node"` at the top — audio buffers and the multipart
-upload to Sarvam need the Node runtime, not Convex's default V8 environment.
+Every JSON event is parsed against a bounded tagged union. Binary chunks are
+accepted only while an STT stream is open and are size-limited.
 
 ## Failure posture
 
@@ -364,7 +335,7 @@ confidently wrong and never dead-ends.
 |---|---|
 | STT returns low confidence | Re-ask once, in simpler words. Then offer typed input. |
 | Answer doesn't map to the enum | Keep the field `undefined`, move on, re-ask at the end. Never guess. |
-| Sarvam API down | Typed-input fallback stays live. The rules engine runs inside a Convex query with no outbound calls — the checklist still works. |
+| Sarvam API down | Typed-input fallback stays live. The rules engine runs locally with no outbound calls — the checklist still works. |
 | Claim row carries `[VERIFY]` | Render it, flagged amber, with the citation shown. Never silently drop it. |
 | Non-Hindu family | Claims and documents still render. Shares section is replaced with a lawyer referral. |
 | Will exists | Route to the probate track and stop. Do not pretend to handle probate. |
@@ -395,7 +366,7 @@ Named here so they don't get re-litigated at 3 PM.
 - **Immovable property.** Land and flats need a different legal instrument
   entirely; movable-only keeps the succession-certificate logic coherent.
 - **Document upload / OCR.** "Do you have X?" and we believe the answer.
-- **Streaming voice.** Push-to-talk. Barge-in is a multi-hour infrastructure
-  project and buys no rubric points the checklist doesn't already win.
+- **Barge-in.** Microphone audio streams while the button is held, but the user
+  cannot interrupt TTS mid-question.
 - **States other than Karnataka.** The rules table is state-scoped by design;
   widening it is a data problem, not an architecture problem, and can wait.
