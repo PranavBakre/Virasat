@@ -42,6 +42,7 @@ real demo. That property is the point of the ordering.
 |---|---|---|
 | 0 | Web mockup: scripted interview + real live checklist | [Web claims mockup](features/iteration-0-web-claims-mockup.md) |
 | 1 | Voice interview with secondary text chat | [Voice + chat](features/iteration-1-voice-chat.md) |
+| 2 | Persistent document store, conservative OCR classification, and estate map | [Document store](features/iteration-2-document-store.md) |
 
 ## Phase rules
 

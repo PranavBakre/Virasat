@@ -76,7 +76,7 @@ that look like features (accounts, saving, PDF export, more states).
 | Will / probate track | Detect it, then stop: "you need the probate route, see a lawyer." |
 | Immovable property (land, flats) | Out. Movable assets only — that's what a succession certificate covers anyway. |
 | Real share calculation for non-Hindu families | Show the document checklist, replace shares with "consult a lawyer." |
-| Document upload / OCR | Out of v1. Ask "do you have X?" and believe the answer. |
+| Document upload / OCR | Deferred from v1; approved for Iteration 2 after the voice path shipped. |
 | PDF export | Print the page. `Cmd+P` is a feature. |
 | Streaming voice / barge-in | Push-to-talk. One clip in, one clip out. |
 | Fine-tuned share arithmetic | Rules table returns claims and documents. Shares are a display note. |
@@ -96,6 +96,7 @@ Tailwind CDN, no build step.
 |---|---|---|---|
 | **0** | Web claims mockup — scripted answers + real live checklist | `web/`, `src/rules/` | ~1 hr |
 | **1** | Voice interview with secondary text chat | Sarvam, Convex, `src/interview/` | ~1 hr |
+| **2** | Persistent document store, conservative OCR classification, and estate map | `src/documents/`, `web/` | post-demo |
 
 **Hard rule:** Iteration 0 must be a complete visual demo backed by the real
 rules engine before any Sarvam call is written.
@@ -146,3 +147,4 @@ Sarvam capability selected: **Voice Experience** (2.5× multiplier).
 
 - [ ] Mentor approved scope
 - [x] Iteration 0 committed and working
+- [x] Product owner approved Iteration 2 document-store expansion

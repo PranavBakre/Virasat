@@ -241,14 +241,22 @@ generic list.
 | `src/openai/chat.ts` | Constrained JSON response | OpenAI Responses API |
 | `src/voice/config.ts` | Shared language and provider enums | — |
 | `src/interview/protocol.ts` | Validated multiplexed WebSocket events | — |
-| `web/serve.ts` | Session state, provider orchestration, static assets | rules + interview + Sarvam + OpenAI |
+| `src/documents/classify.ts` | Extracted evidence → known document ids. Deterministic and reviewable. | `catalog.ts` |
+| `src/documents/sarvam-vision.ts` | PDF/image digitisation through Sarvam Vision | Sarvam Document Intelligence REST API |
+| `src/documents/store.ts` | Opaque estate workspace and original-file storage | local filesystem |
+| `src/documents/estate-map.ts` | Institution groups and deduplicated outstanding documents | rules output only |
+| `web/serve.ts` | Session state, provider and document orchestration, static assets | rules + interview + Sarvam + OpenAI |
 | `web/app.js` | Voice/text interview, document controls, register render | one app WebSocket |
 | `web/index.html` | Virasat two-column demo surface | Tailwind CDN |
 
 **Dependency rule:** `src/rules/` imports nothing from `src/sarvam/`,
-`src/openai/`, or `src/interview/`. The arrow points one way. This is what keeps
-the rules engine testable without an API key, and what lets Iteration 0 ship
-before any voice-provider integration exists.
+`src/openai/`, `src/interview/`, or `src/documents/`. The arrow points one way.
+This is what keeps the rules engine testable without an API key, and what lets
+Iteration 0 ship before any provider or document integration exists.
+
+Document parsing sits on the evidence side of the same boundary. It may set a
+known `profile.documents[id]` to `yes` after a confident match. It may not add a
+requirement, route a claim, or infer entitlement from extracted prose.
 
 ## Question selection
 
@@ -323,12 +331,29 @@ profile/ClaimSet state, and TTS MP3 chunks. The API key remains server-only.
 
 The profile is the only stored input to `deriveClaims()`; the ClaimSet is
 recomputed after every accepted answer or document update and is never
-materialized. Refresh deliberately starts a new buildathon session. Convex
-remains installed for a later persistence iteration, but is not in the live
-voice path.
+materialized. Convex remains installed for a later hosted persistence
+iteration, but is not in the live voice path.
 
 Every JSON event is parsed against a bounded tagged union. Binary chunks are
 accepted only while an STT stream is open and are size-limited.
+
+## Iteration 2 evidence store
+
+An opaque estate id in the URL joins the WebSocket interview and HTTP document
+uploads to one local workspace. Workspace metadata, originals, and extracted
+text survive refresh under `.virasat-data/`; the derived `ClaimSet` does not.
+
+Document parsing is evidence ingestion, not entitlement inference. A title
+phrase alone remains reviewable. Automatic readiness requires an independent
+structural signal from the document body, and users can correct every held
+requirement. Async interview answers are applied to the latest shared profile
+after extraction so a concurrent upload cannot be overwritten by a stale
+snapshot.
+
+Sarvam Document Intelligence calls are queued and spaced to its 10 requests per
+minute limit. `429` and `503` responses retry with bounded backoff; batch files
+are processed sequentially so one upload cannot fan out into ten simultaneous
+Vision jobs.
 
 ## Failure posture
 
@@ -340,6 +365,7 @@ confidently wrong and never dead-ends.
 | STT returns low confidence | Re-ask once, in simpler words. Then offer typed input. |
 | Answer doesn't map to the enum | Keep the field `undefined`, move on, re-ask at the end. Never guess. |
 | Sarvam or OpenAI API down | Switch providers or use typed input. The rules engine runs locally with no outbound calls — the checklist still works. |
+| Vision is rate-limited or unavailable | Keep the original, retry bounded transient failures, and leave the file reviewable rather than asserting evidence. |
 | Claim row carries `[VERIFY]` | Render it, flagged amber, with the citation shown. Never silently drop it. |
 | Non-Hindu family | Claims and documents still render. Shares section is replaced with a lawyer referral. |
 | Will exists | Route to the probate track and stop. Do not pretend to handle probate. |
@@ -354,6 +380,7 @@ adds text chat alongside the microphone, through the same extraction path.
 |---|---|---|---|
 | 0 | Web mockup: scripted interview + live deterministic checklist | rules engine + web surface | [iteration-0-web-claims-mockup.md](features/iteration-0-web-claims-mockup.md) |
 | 1 | Voice interview with secondary text chat | Sarvam + interview state + Convex | [iteration-1-voice-chat.md](features/iteration-1-voice-chat.md) |
+| 2 | Persistent document store, conservative OCR classification, and estate map | evidence store + Sarvam Vision | [iteration-2-document-store.md](features/iteration-2-document-store.md) |
 
 Each iteration is independently demoable. If voice or the venue network fails,
 Iteration 0 remains a complete visual walkthrough of the core product.
@@ -369,7 +396,6 @@ Named here so they don't get re-litigated at 3 PM.
 - **Multi-session history.** One session at a time. No "my past estates" list.
 - **Immovable property.** Land and flats need a different legal instrument
   entirely; movable-only keeps the succession-certificate logic coherent.
-- **Document upload / OCR.** "Do you have X?" and we believe the answer.
 - **Barge-in.** Microphone audio streams while the button is held, but the user
   cannot interrupt TTS mid-question.
 - **States other than Karnataka.** The rules table is state-scoped by design;
