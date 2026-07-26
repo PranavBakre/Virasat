@@ -78,10 +78,10 @@ export function classifyDocument(
   }
 
   // A title phrase merely identifies what a file discusses. Auto-filing needs
-  // a second independent signal from the document body: another catalog phrase
-  // or structural evidence such as a registration number, issuer, or signature.
-  const isEvidence = best.textHits >= 2
-    || (best.textHits >= 1 && structuralHits >= 1);
+  // a second independent, structural signal from the document body, such as a
+  // registration number, issuer, or signature. Catalog patterns are synonyms,
+  // so matching two of them is still only one kind of evidence.
+  const isEvidence = best.textHits >= 1 && structuralHits >= 1;
   const confidence = isEvidence
     ? Math.min(0.98, 0.86 + best.textHits * 0.04 + Math.min(structuralHits, 2) * 0.03)
     : Math.min(0.74, 0.46 + best.textHits * 0.12 + best.filenameHits * 0.08);

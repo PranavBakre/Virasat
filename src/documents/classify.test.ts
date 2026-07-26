@@ -61,6 +61,25 @@ describe("classifyDocument", () => {
     expect(result.confidence).toBeLessThan(0.75);
   });
 
+  test("synonymous title phrases are not independent evidence", () => {
+    const deathCertificate = classifyDocument(
+      "scan.pdf",
+      "Death certificate. Certificate of death.",
+    );
+    const heirCertificate = classifyDocument(
+      "scan.pdf",
+      "Legal heir certificate. Surviving member certificate.",
+    );
+
+    expect(deathCertificate.matchedDocumentIds).toEqual(["death-certificate"]);
+    expect(deathCertificate.confidence).toBeLessThan(0.75);
+    expect(heirCertificate.matchedDocumentIds).toEqual([
+      "heir-proof",
+      "legal-heir-proof",
+    ]);
+    expect(heirCertificate.confidence).toBeLessThan(0.75);
+  });
+
   test("a list naming multiple documents remains unsorted", () => {
     const result = classifyDocument(
       "requirements.txt",
