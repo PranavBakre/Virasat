@@ -1,5 +1,5 @@
 import type { BankAccount, EstateProfile } from "../rules/types.ts";
-import type { InterviewLanguage } from "../sarvam/config.ts";
+import type { InterviewLanguage } from "../voice/config.ts";
 
 export type QuestionCopy = Record<InterviewLanguage, string>;
 export type Question = {

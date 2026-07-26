@@ -1,5 +1,5 @@
 import type { SarvamAIClient } from "sarvamai";
-import type { InterviewLanguage } from "./config.ts";
+import type { InterviewLanguage } from "../voice/config.ts";
 
 type SttSocket = Awaited<ReturnType<SarvamAIClient["speechToTextStreaming"]["connect"]>>;
 
@@ -17,14 +17,16 @@ export async function openTranscriptionStream(
     sample_rate: "16000",
     vad_signals: "true",
     flush_signal: "true",
-    // Answers here are short and often quiet — "ಹೌದು", "no". Default VAD
-    // gating dropped them as non-speech, which read as the mic not working.
     high_vad_sensitivity: "true",
     reconnectAttempts: 2,
   });
   configureStreamingSocketForBun(socket);
 
   socket.on("message", (message) => {
+    if (message.type === "error") {
+      console.log("Sarvam STT rejected a frame", message.data);
+      return;
+    }
     if (message.type !== "data" || !("transcript" in message.data)) return;
     if (typeof message.data.transcript === "string") {
       onTranscript(message.data.transcript.trim());
@@ -36,16 +38,9 @@ export async function openTranscriptionStream(
 }
 
 export function configureStreamingSocketForBun(socket: SttSocket): void {
-  // sarvamai@1.1.7 defaults its reconnecting transport to browser-style
-  // `blob`. Bun's native WebSocket rejects that value during its deferred
-  // connection setup, so select Bun's supported binary representation first.
   socket.socket.binaryType = "arraybuffer";
 }
 
-// A socket held across presses can be closed by the far end while idle. The SDK
-// throws "Socket is not open." from transcribe/flush, and that throw lands inside
-// Bun's websocket message handler — so an idle-closed socket took down the whole
-// turn instead of just reopening. Report liveness and never throw from here.
 export function isTranscriptionOpen(socket: SttSocket | null): boolean {
   return socket?.socket?.readyState === 1;
 }
@@ -56,7 +51,7 @@ export function sendPcm16(socket: SttSocket, bytes: Uint8Array): boolean {
     socket.transcribe({
       audio: Buffer.from(bytes).toString("base64"),
       sample_rate: 16_000,
-      encoding: "pcm_s16le",
+      encoding: "audio/wav",
     });
     return true;
   } catch (error) {

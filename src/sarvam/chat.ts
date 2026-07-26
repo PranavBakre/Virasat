@@ -67,8 +67,7 @@ export async function extractWithSarvam(
   if (!content) return null;
 
   const parsed: unknown = JSON.parse(content);
-  if (!isValueResponse(parsed)) return null;
-  if (parsed.value === null) return null;
+  if (!isValueResponse(parsed) || parsed.value === null) return null;
   if (question.kind === "enum") {
     return question.values.includes(parsed.value) ? parsed.value : null;
   }

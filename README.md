@@ -34,12 +34,12 @@ still missing.
 
 ```
 speech (kn-IN / hi-IN / en-IN)
-  → Sarvam Saaras v3            transcript
+  → Sarvam or OpenAI STT         transcript
   → constrained extraction      one typed answer, one field
   → EstateProfile               Bun WebSocket session
   → rules engine                pure function, no model
   → checklist + next question
-  → Sarvam Bulbul v3            spoken back
+  → selected provider TTS       spoken back
 ```
 
 **The architectural commitment:** the rules table is data, the model is
@@ -54,8 +54,7 @@ away. A hallucinated document sends them chasing paperwork that doesn't exist.
 
 ## Stack
 
-Bun · TypeScript · Sarvam (Saaras v3 STT, Sarvam-30B
-chat, Bulbul v3 TTS) · Tailwind CDN.
+Bun · TypeScript · Sarvam + OpenAI provider switcher · Tailwind CDN.
 
 ## Run it
 
@@ -69,14 +68,17 @@ bun run dev                   # Voice/text server with hot reload
   real register excerpt
 - `http://localhost:3000/app` — the interview and live register
 
-Copy `.env.example` to `.env` and set the server-local key:
+Copy `.env.example` to `.env` and set either or both server-local keys:
 
 ```bash
 SARVAM_API_KEY=sk_…
+OPENAI_API_KEY=sk-proj-…
 ```
 
-Without a key, the complete typed interview and deterministic checklist remain
-available; microphone STT, model extraction, and spoken questions are disabled.
+The selector in `/app` switches STT, one-field extraction, and TTS together
+without resetting the interview. A provider without a configured key is marked
+unavailable. Without either key, the complete typed interview and deterministic
+checklist remain available.
 
 ## Documentation
 
@@ -86,12 +88,14 @@ available; microphone STT, model extraction, and spoken questions are disabled.
 | [docs/rules-table.md](docs/rules-table.md) | **The claims, documents, and legal citations — this is the product** |
 | [docs/architecture.md](docs/architecture.md) | Data contracts, module boundaries, failure posture |
 | [docs/sarvam-api.md](docs/sarvam-api.md) | Verified endpoint reference |
+| [docs/openai-api.md](docs/openai-api.md) | OpenAI provider endpoints and model defaults |
 | [workflows/1-IDEATION.md](workflows/1-IDEATION.md) | Scope, cuts, demo script |
 | [CLAUDE.md](CLAUDE.md) | Working rules for this repo |
 
 ## Status
 
-Iterations 0 and 1 are complete; live-key voice verification is still required.
+Iterations 0 and 1 are complete; live-key verification for both providers is
+still required.
 
 | # | Iteration | Status |
 |---|---|---|

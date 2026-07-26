@@ -1,6 +1,5 @@
-import type { SarvamAIClient } from "sarvamai";
 import type { Question } from "./questions.ts";
-import { extractWithSarvam } from "../sarvam/chat.ts";
+import type { VoiceProvider } from "../voice/config.ts";
 
 const YES = ["yes", "yeah", "correct", "ಹೌದು", "ಇದೆ", "ಇತ್ತು", "हाँ"];
 const NO = ["no", "not", "never", "ಇಲ್ಲ", "ಇರಲಿಲ್ಲ", "नहीं", "नही"];
@@ -101,8 +100,9 @@ export function extractFastPath(question: Question, transcript: string): string 
 export async function extractAnswer(
   question: Question,
   transcript: string,
-  client: SarvamAIClient | null,
-): Promise<{ value: string | null; source: "sarvam" | "local" | "fast" }> {
+  extractor: ((question: Question, transcript: string) => Promise<string | null>) | null,
+  provider: VoiceProvider,
+): Promise<{ value: string | null; source: VoiceProvider | "local" | "fast" }> {
   if (typeof transcript !== "string" || transcript.trim().length > 500) {
     return { value: null, source: "local" };
   }
@@ -113,26 +113,21 @@ export async function extractAnswer(
   const fast = extractFastPath(question, transcript);
   if (fast !== null) return { value: fast, source: "fast" };
 
-  if (client) {
+  if (extractor) {
     try {
-      // sarvam-30b reasons before answering, and measured 5.3s and 11.6s on real
-      // free-form answers. Correct, but unusable in a live interview — so race it
-      // against a deadline and fall back to keyword matching, which resolves most
-      // of these anyway. The request is abandoned, not cancelled; we just stop
-      // waiting on it.
       const value = await Promise.race([
-        extractWithSarvam(client, question, transcript.trim()),
+        extractor(question, transcript.trim()),
         new Promise<typeof TIMED_OUT>((resolve) =>
           setTimeout(() => resolve(TIMED_OUT), EXTRACTION_TIMEOUT_MS)
         ),
       ]);
       if (value === TIMED_OUT) {
-        console.log("Sarvam extraction timed out; using local matching");
+        console.log(`${provider} extraction timed out; using local matching`);
       } else if (value !== null) {
-        return { value, source: "sarvam" };
+        return { value, source: provider };
       }
     } catch (error) {
-      console.log("Sarvam extraction unavailable", error);
+      console.log(`${provider} extraction unavailable`, error);
     }
   }
 
