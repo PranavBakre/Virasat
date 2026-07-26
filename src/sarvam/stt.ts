@@ -17,6 +17,9 @@ export async function openTranscriptionStream(
     sample_rate: "16000",
     vad_signals: "true",
     flush_signal: "true",
+    // Answers here are short and often quiet — "ಹೌದು", "no". Default VAD
+    // gating dropped them as non-speech, which read as the mic not working.
+    high_vad_sensitivity: "true",
     reconnectAttempts: 2,
   });
   configureStreamingSocketForBun(socket);
