@@ -261,8 +261,9 @@ function renderRegister() {
     claims.length > 0 || (latestClaimSet.cards ?? []).length > 0,
   );
 
+  // Share guidance is meaningless before there is anything to divide.
   const shares = document.querySelector("#shares-note");
-  shares.classList.toggle("hidden", !latestClaimSet.sharesNote);
+  shares.classList.toggle("hidden", !latestClaimSet.sharesNote || !claims.length);
   shares.textContent = latestClaimSet.sharesNote ?? "";
 }
 

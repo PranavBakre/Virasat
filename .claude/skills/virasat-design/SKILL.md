@@ -1,14 +1,16 @@
 ---
 name: virasat-design
-description: The virasat visual language — warm paper ground, indigo ink, Anek type, Kannada as a first-class script. Load before writing ANY UI, HTML, Tailwind class, or styling in this repo. Overrides ~/.claude/frontend-design.md, which is a dark SaaS palette for a different product and must not be used here.
+description: The virasat visual language — a ruled register on paper stock, indigo ink, Tiro Kannada serif for the spoken voice and Anek Latin for the record, built on GOV.UK Design System patterns. Load before writing ANY UI, HTML, Tailwind class, or styling in this repo. Overrides ~/.claude/frontend-design.md, which is a dark SaaS palette for a different product and must not be used here.
 ---
 
 # virasat design language
 
 **This overrides `~/.claude/frontend-design.md`.** That file is the GrowthX
 dark-theme SaaS system for gx-client-next. Do not load it, do not use its
-tokens, do not use the baseline-font unit system here. virasat is light, warm,
-and document-shaped.
+tokens, do not use the baseline-font unit system here.
+
+Live implementation: `web/index.html` (tokens + print styles) and `web/app.js`
+(the register). When this file and the code disagree, fix the code.
 
 ## Who is looking at this
 
@@ -16,211 +18,230 @@ A spouse or adult child, 45–70, often more fluent in Kannada than English,
 within weeks of a death, on a laptop, doing paperwork they have never done
 before and do not want to be doing.
 
-Every decision below follows from that sentence. When in doubt, ask: *does this
-make a tired, grieving 60-year-old's next step more obvious?* If not, cut it.
+Every decision below follows from that sentence. When in doubt: *does this make
+a tired, grieving 60-year-old's next step more obvious?* If not, cut it.
 
-## The idea: redeemed paperwork
+## The concept: speech becoming record
 
-virasat's output is a document. The visual language leans into that instead of
-hiding it — this is the passbook, the ration card, the stamp paper, made
-legible and humane.
+Two panels, and the contrast between them **is** the design.
 
-That framing is also what makes it Indian without costume. **Indian officialdom
-is a real, specific visual culture** — warm paper stock, ink-blue rubber stamps,
-ruled columns, ochre file covers. Borrow the materials, drop the ugliness.
+- **Left is a conversation.** Serif, warm, spoken. An accumulating transcript of
+  what the agent already knows, then the live question, large.
+- **Right is a register.** Sans, ruled, numbered, tabular. A schedule of what the
+  estate is owed.
 
-### Never do these
+Someone talks, and a legal document assembles itself. That is the product in one
+image, and it is what the layout should make you feel.
 
-The costume trap. Every one of these reads as an outsider's idea of India:
+The numbering is not decoration. A succession-certificate petition under s.372
+ISA requires an enumerated schedule of assets — the register is the thing the
+family will actually have to produce, so numbering it encodes something true.
 
-- Marigold garlands, mandalas, paisley, rangoli borders, temple arches
-- Tricolour (saffron / white / green) — politically loaded, and wrong for grief
-- Gold gradients, "ethnic" pattern dividers, henna-style flourishes
-- Diya/lamp icons in a product about a death
+## Borrowed: GOV.UK Design System
 
-Also banned, from the other direction — the generic AI-startup look:
+GOV.UK solved this exact problem — guiding stressed, low-confidence people
+through high-stakes bureaucracy. Take the **patterns**, not the visuals (no
+Transport font, no black-and-yellow).
 
-- Dark mode, purple or blue gradients, glassmorphism, glow effects
-- Inter, or any grotesk that looks like a dev tool
-- Emoji as UI (🎉 especially — see Tone)
+| Borrowed | Applied here |
+|---|---|
+| [Task list component](https://design-system.service.gov.uk/components/task-list/) | Each claim is a row: name + hint left, status right |
+| [Complete multiple tasks](https://design-system.service.gov.uk/patterns/complete-multiple-tasks/) | Status vocabulary and the progress line above the register |
+| [Summary list](https://design-system.service.gov.uk/components/summary-list/) | `<dl>` key/value rows with hairline rules — claim details and the transcript |
+| Grouping under short headings | Claims banded by institution once there are several |
+| One thing per page | One question at a time in the left panel |
+| Sentence case for statuses | No `uppercase tracking-widest` labels anywhere |
+
+### The status principle worth internalising
+
+**GOV.UK gives the finished state no visual weight, so attention falls on the
+work that remains.** This is the single most useful thing taken from them, and
+it is the opposite of the instinct to make "done" green and loud.
+
+| State | Treatment | Why |
+|---|---|---|
+| Ready to file | `neem` text + 7px filled square. **No tag.** | Good news, stated quietly |
+| Documents to confirm | `ochreTint` filled tag, `ochreInk` text | Needs action — gets the weight |
+| Waiting on documents | same tag | A doc confirmed absent, not merely unasked |
+| Confirm details | `ink2` plain text | GOV.UK's "cannot start yet" — nothing to do yet |
+
+### Unknown is not missing
+
+A document nobody was asked about is **not** a missing document. The engine can
+only mark it `unknown`; rendering that as "Missing" invents bad news and makes
+every claim look blocked.
+
+- `have: "no"` → "Still to get: …" in `ochreInk`
+- `have: "unknown"` → "Not yet confirmed: …" in `ink2`
+- all held → "All 3 in hand" in `neem`
+
+This is the tri-state rule from CLAUDE.md applied to the *presentation* layer,
+and it is easy to lose. Losing it costs the demo its best moment: with unknowns
+read as missing, the headline becomes "0 ready to file".
+
+### Lead with the finding, not the shortfall
+
+The register header says `5 claims identified · 5 ready to file` — count first,
+readiness second, and the readiness clause is omitted entirely when it is zero.
+Never make "0 ready to file" the headline; it is discouraging and tells the
+family nothing they can act on.
+
+The header also **names** the rarely-claimed entitlements ("Includes EPFO death
+insurance (EDLI) and Employer dues — claims most families never file"). That
+sentence is the entire point of the product, so it must not be something you
+have to scroll to reach.
 
 ## Type
 
-**Anek** — a Google Fonts superfamily by **Ek Type**, an Indian foundry, with
-Latin and Kannada drawn together as one design. This is the single strongest
-Indian move available and it is functional, not decorative: the Kannada is not
-a fallback bolted onto a Latin face.
+Two voices, two Indian-script foundries. Both on Google Fonts, both verified live.
 
 ```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anek+Kannada:wght@400;500;600&family=Anek+Latin:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anek+Latin:wght@400;500;600&family=Tiro+Kannada:ital@0;1&display=swap" rel="stylesheet">
 ```
 
-```css
---font-latin: 'Anek Latin', system-ui, sans-serif;
---font-kannada: 'Anek Kannada', 'Anek Latin', system-ui, sans-serif;
-```
+| Role | Face | Why |
+|---|---|---|
+| The spoken voice — Kannada questions *and* their English gloss | **Tiro Kannada** (Tiro Typeworks) | A scholarly Indic text serif. Book-like and dignified where a sans would be clinical. Covers Kannada and Latin in one design, so the question and its translation share a voice. |
+| The record — labels, statuses, register rows, all UI | **Anek Latin** (Ek Type) | Contemporary Indian sans. Neutral, tabular, unfussy. |
 
-Weights: 400 body, 500 emphasis, 600 headings. **Never bold beyond 600** — heavy
-type reads as shouting in this context.
+The English gloss is set in **serif italic** — it is the same voice speaking, not
+a separate UI string.
+
+Never bold past 600. Heavy type reads as shouting here.
 
 ### Kannada is not Latin at a different size
 
-Two rules, both non-obvious, both load-bearing:
+1. Kannada renders **~1.05em** against Latin at the same optical size.
+2. Kannada needs **`line-height: 1.75`** vs `1.6` for Latin — conjuncts stack and
+   vowel signs extend above and below, so tighter leading collides.
 
-1. **Kannada renders at ~1.05em** relative to Latin at the same optical size.
-   Its glyphs are visually smaller at equal point size.
-2. **Kannada needs `line-height: 1.75`** vs `1.6` for Latin. Conjuncts stack
-   vertically and vowel signs extend above and below; tighter leading collides.
-
-Apply by script, not by element — a claim card mixes both.
-
-```html
-<p class="font-kannada text-[1.05em] leading-[1.75]">ಅವರಿಗೆ ಬ್ಯಾಂಕ್ ಖಾತೆ ಇತ್ತೇ?</p>
-```
+Apply by script, not by element.
 
 ### Scale — deliberately large
 
-The audience is 45–70. Base is **17px**, not 14px or 16px. This is an
-accessibility decision driven by who is reading, and it is not negotiable for
-density reasons.
+Base **17px**, not 14. The audience is 45–70; this is an accessibility decision,
+not a stylistic one, and density is not a reason to shrink it.
 
-| Role | Size | Weight | Notes |
-|---|---|---|---|
-| Question (the spoken line) | 28px | 500 | The largest thing on screen |
-| Claim title | 19px | 600 | |
-| Body / document lines | 17px | 400 | |
-| Meta (timeline, citation) | 15px | 400 | Secondary ink |
-| Legal citation / `[VERIFY]` | 14px | 500 | Never smaller — it must stay readable |
+| Role | Size | Face |
+|---|---|---|
+| Question (Kannada) | 29px | Tiro |
+| Question (English gloss) | 18px italic | Tiro |
+| Register summary stat | 19px 500 | Anek |
+| Claim name | 19px 500 | Anek |
+| Body, `<dd>` values | 16–17px | Anek |
+| Hint, `<dt>` keys, status | 14–15px | Anek |
+| Source line, eyebrow labels | 13px | Anek |
 
-Line length caps at **68 characters**. Long measure is hostile to a distracted
-reader.
+`.tnum` (`font-variant-numeric: tabular-nums`) on every gutter number and count.
+Running text caps around 52–65 characters.
 
 ## Colour
 
-Warm paper ground, ink-blue text, earthen accents. Indigo and terracotta are
-genuinely Indian — indigo dye and block printing, terracotta and laterite — and
-both are somber enough for the context.
+Indigo-dominant ledger on cool-biased paper stock. Neutrals carry a slight blue
+bias toward the accent, so they read as chosen rather than inherited.
 
 ```js
-// Tailwind CDN config — paste inline in <script>, this is the whole system
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        paper:    '#FAF6EF',  // warm ground — never #FFF, it's clinical
-        surface:  '#FFFFFF',  // cards lifted off the paper
-        rule:     '#E3DACC',  // borders, column rules
-        ink:      '#1F1B16',  // primary text — warm near-black, never #000
-        ink2:     '#5C5349',  // secondary text
-        indigo:   '#2A3663',  // primary accent, headings, links
-        terra:    '#B4552D',  // "commonly missed" — the EDLI flag
-        ochre:    '#B07D1A',  // blocked / waiting on a document
-        neem:     '#4C6B41',  // filable now
-        brick:    '#9B3226',  // hard gate (no death certificate)
-      },
-      fontFamily: {
-        latin:   ['Anek Latin', 'system-ui', 'sans-serif'],
-        kannada: ['Anek Kannada', 'Anek Latin', 'system-ui', 'sans-serif'],
-      },
-    },
-  },
-}
+tailwind.config = { theme: { extend: { colors: {
+  paper:      '#F1F0EA',  // ground — paper stock, grey-biased, NOT cream
+  sheet:      '#FBFAF7',  // the register sheet
+  rule:       '#D5D2C8',  // hairline
+  ruleSoft:   '#E4E1D8',  // inner hairline
+  ink:        '#1A1B21',  // near-black, blue bias
+  ink2:       '#5B5D68',  // cool grey
+  indigo:     '#23306B',  // the dominant accent — ledger ink
+  neem:       '#3F6B47',  // ready
+  ochre:      '#8F6410',  // waiting (borders/icons)
+  ochreTint:  '#EBDFC4',  // status tag fill
+  ochreInk:   '#5E4508',  // status tag text
+  brick:      '#8F2F26',  // hard gate
+  terra:      '#A64A26',  // rarely-claimed — the one flourish
+} } } }
 ```
 
-### Status colour is meaning, not decoration
+Semantic colour (`neem` / `ochre` / `brick`) is deliberately separate from the
+accent (`indigo`) and does not count as it.
 
-| Status | Colour | Why this one |
+### Measured contrast — do not re-estimate these
+
+| Token | on `paper` | on `sheet` |
 |---|---|---|
-| Filable now | `neem` | Muted olive. A bright green would read as celebratory. |
-| Blocked on a document | `ochre` | Turmeric. **Amber, never red** — a missing document is the next step, not an error. |
-| Existence unknown | `ink2` | Neutral. "Go check" is not a warning. |
-| Hard gate | `brick` | Muted, not fire-engine red. Used at most once on screen. |
-| Commonly missed | `terra` | The EDLI flag. This is the delight moment — let it be the warmest thing on the page. |
+| `ink` | 15.04 AAA | 16.46 AAA |
+| `indigo` | 10.78 AAA | 11.79 AAA |
+| `brick` | 7.07 AAA | 7.73 AAA |
+| `ink2` | 5.73 AA | 6.27 AA |
+| `neem` | 5.40 AA | 5.91 AA |
+| `terra` | 5.07 AA | 5.54 AA |
+| `ochre` | 4.60 AA | 5.03 AA |
 
-### Contrast — measured, not estimated
+`ochreInk` on `ochreTint` is 6.82:1. `sheet` on `indigo` (the button) is 11.79:1.
 
-Against `paper` (`#FAF6EF`):
+`rule` and `ruleSoft` are ~1.3:1 — **borders only**, never text, never icons.
 
-| Token | Ratio | Verdict |
-|---|---|---|
-| `ink` | 15.89:1 | AAA |
-| `indigo` | 10.79:1 | AAA |
-| `ink2` | 6.99:1 | AA |
-| `brick` | 6.77:1 | AA |
-| `neem` | 5.59:1 | AA |
-| `terra` | 4.56:1 | AA — **tight**, see below |
-| `ochre` | 3.36:1 | large text / non-text only |
-
-Two rules fall out of this:
-
-- **`ochre` is never body text.** Use it for the status rule, badge fills, and
-  icons. An ochre badge takes `ink` text (4.72:1), never white (3.62:1).
-- **`terra` only at 19px/500 or larger.** It clears AA with little headroom, and
-  it is used for the "commonly missed" flag — which is a claim title, so this is
-  satisfied by default. Don't demote it to meta type.
-
-`rule` (`#E3DACC`) is 1.29:1 — a border colour only. Never text, never an icon.
-
-`white on indigo` is 11.63:1, so indigo is safe as a filled button or header band.
+`terra` was darkened from `#B4552D` specifically so it clears AA on *both*
+grounds; the original only passed on `sheet`, which is a trap waiting for the
+first time someone puts the flag on a `paper` band.
 
 ## Layout
 
-Two columns on a laptop. Conversation left, the deliverable right.
-
 ```
-┌──────────────────────────────┬────────────────────────────────────┐
-│                              │                                    │
-│    the question, large       │   CLAIMS                           │
-│    in their language         │                                    │
-│                              │   ▌ BANK — nominee registered      │
-│         ◉ hold to speak      │     file at the branch · 15 days   │
-│                              │     needs: claim form              │
-│    ── or type your answer ── │                                    │
-│    ┌──────────────────────┐  │   ▌ EPFO — death insurance (EDLI)  │
-│    │                      │  │     Form 5IF                       │
-│    └──────────────────────┘  │     most families never file this  │
-│                              │                                    │
-└──────────────────────────────┴────────────────────────────────────┘
-     paper ground                    surface cards on paper
+┌───────────────────────────┬──────────────────────────────────────────┐
+│  The conversation         │  Schedule of claims                      │
+│  ───────────────────────  │  5 claims identified · 5 ready to file    │
+│  Death certificate   Yes  │              Includes EDLI and Employer   │
+│  Bank account   SBI · …   │              dues — rarely claimed        │
+│  Work        Salaried…    │ ════════════════════════════════════════ │
+│                           │  Banks and deposits                      │
+│  Last step                │ ──────────────────────────────────────── │
+│  ನಿಮ್ಮ ಬಳಿ ಇರುವ           │  01  State Bank of India    ▪ Ready to file│
+│  ದಾಖಲೆಗಳನ್ನು…             │      sole account with registered nominee │
+│  Tick the documents…      │      File at    Branch holding the account│
+│                           │      Form       Bank claim form           │
+│  ☑ Death certificate      │      Documents  All 3 in hand             │
+│  ☐ Bank claim form        │      S1 — RBI … 2025   Unverified         │
+│                    [Begin]│                                          │
+└───────────────────────────┴──────────────────────────────────────────┘
 ```
 
-- **Left is calm, right accumulates.** The right column never empties and never
-  reorders once a claim lands. A list that reshuffles while someone reads it is
-  unusable and looks broken on stage.
-- **Status is a 3px left rule on the card**, not a pill or a badge floating in
-  the corner. Ruled margins are the paper vocabulary.
-- **Where to file comes before what's missing.** Always. It is the family's
+- Grid `[0.82fr_1.18fr]`, gap 36px. The register gets the larger share — it is
+  the deliverable.
+- **Hairlines only. No cards, no rounded corners, no shadows, no accent rails.**
+  A register is ruled paper. This is also what keeps the page off the current
+  AI-design default of accent-barred rounded cards on cream.
+- Group headings are `bg-paper` bands across the sheet — the ruled break in a
+  ledger.
+- Numbers live in a 42px gutter, tabular, `ink2`.
+- The transcript is what fills the left column. Before it existed the panel had
+  ~400px of dead space and read as broken; it also happens to be the visible
+  evidence of the "Memory and Context" rubric point.
+- **Where to file comes before what's missing.** Always — it is the family's
   first question.
-- Generous padding: `24px` inside cards, `20px` between them. Crowding raises
-  stress, and stress is the thing being designed against.
-- Rounded corners `6px` maximum. Paper has edges.
-- **One shadow, barely there:** `0 1px 2px rgba(31,27,22,0.06)`. No glows, no
-  layered shadows, no blur.
+- The register never reorders once a claim lands. A list that reshuffles while
+  someone reads it is unusable and looks broken on stage.
+
+## Single theme, on purpose
+
+No dark mode. This is a paper document; inverting it would break the concept.
+A deliberate commitment, not an omission.
 
 ## Tone in the interface
 
-- **No celebration.** No confetti, no emoji, no "🎉 4 claims found!". Say
-  "4 claims · 1 you can file today" and let it land on its own.
-- **"your husband" / "your father"** once the relationship is known. Never
-  "the deceased" in user-facing text.
-- **No jargon in questions** — "did he work a salaried job?", not "was he an EPF
-  subscriber". Jargon belongs in the output, where it names the form to ask for.
-- **`[VERIFY]` renders visibly**, small caps, `ink2`, with its citation. An
-  unverified rule that looks authoritative is the design failure that can
-  actually hurt someone.
-- Every claim shows its source ref (`S1`, `S4`) in meta type. Being auditable is
-  part of the visual identity — this product's credibility is its whole value.
+- **No celebration.** No confetti, no emoji, no "🎉". State counts plainly.
+- **"your husband" / "your father"** once the relationship is known. Never "the
+  deceased" in user-facing text.
+- **No jargon in questions** — "was he working at the time?", not "was he an EPF
+  subscriber". Jargon belongs in the register, where it names the form to ask for.
+- **Sentence case.** No uppercase tracking-wide eyebrows.
+- Every claim shows its source ref and an **Unverified** flag when the rule still
+  carries a `[VERIFY]`. Being auditable is part of the visual identity — this
+  product's credibility is its entire value.
+- `Cmd+P` is the export feature. The print stylesheet drops the interview panel
+  and prints the register.
 
 ## What building.md still forbids
 
 `rules/building.md` bans loading states, animations, mobile responsiveness, and
-custom CSS. **That still holds.** The token block above is the one exception,
-and it exists because deciding colour once is cheaper than re-deciding it at
-4 PM.
+custom CSS. **That still holds.** The exceptions in `<style>` are the token
+config, `.tnum`, a visible `:focus-visible`, `prefers-reduced-motion`, and the
+print block — all structural, none decorative.
 
-Everything here is Tailwind utilities against those tokens. If you find yourself
-writing a `<style>` block beyond the font imports and the config, stop.
-
-Desktop only. No responsive work. No dark mode.
+Desktop only. No responsive work.
