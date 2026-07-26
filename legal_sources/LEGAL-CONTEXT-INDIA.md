@@ -76,10 +76,10 @@ Death Certificate  ← the master key; nothing downstream works without it
    ↓                                    ↓
 Was there a Will?                  Legal Heir Certificate
    ↓                    (for pension / PF / gratuity / service dues)
-NO → intestate succession        
-     (§4: depends on religion)         
-YES → testamentary succession           
-     (§5: probate now OPTIONAL)         
+NO → intestate succession
+     (§4: depends on religion)
+YES → testamentary succession
+     (§5: probate now OPTIONAL)
    ↓
    ├→ Succession Certificate (debts & securities only) — §3.4
    ├→ Probate / Letters of Administration (whole estate) — §5.3
