@@ -60,6 +60,7 @@ indigo ink, Anek type by Ek Type, Kannada as a first-class script.
 | OpenAI endpoints, models, and provider behavior | [docs/openai-api.md](docs/openai-api.md) |
 | What Iteration 0 must do, and when it's done | [docs/features/iteration-0-web-claims-mockup.md](docs/features/iteration-0-web-claims-mockup.md) |
 | What Iteration 1 must do | [docs/features/iteration-1-voice-chat.md](docs/features/iteration-1-voice-chat.md) |
+| What Iteration 2 must do | [docs/features/iteration-2-document-store.md](docs/features/iteration-2-document-store.md) |
 
 ## The rule that overrides everything else
 

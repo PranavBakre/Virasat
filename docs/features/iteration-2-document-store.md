@@ -45,8 +45,12 @@ retention controls, deletion, malware scanning, and an audit trail.
 - Text formats are read locally.
 - PDF and image formats use the Sarvam Document Digitization job API when
   `SARVAM_API_KEY` is configured.
-- Without a key, originals are retained and filename classification can still
-  organize clear matches; the UI marks unread scans for review.
+- Without a key, originals are retained and unread scans remain reviewable.
+- A title or filename alone never proves possession. Automatic filing requires
+  independent structural evidence in extracted content.
+- Users can correct every readiness-changing document assertion.
+- Vision jobs are queued, API calls are spaced to 10 requests per minute, and
+  `429`/`503` responses retry with bounded backoff.
 
 ## Added modules
 
@@ -66,6 +70,10 @@ retention controls, deletion, malware scanning, and an audit trail.
 - [x] Originals and metadata remain outside source control
 - [x] Known evidence updates claim readiness
 - [x] Ambiguous evidence remains reviewable
+- [x] Generic mentions and negated filenames cannot assert possession
+- [x] Held evidence remains visible and correctable
+- [x] Concurrent answers preserve document updates
+- [x] Vision batches respect provider rate limits
 - [x] The estate map groups claims and deduplicates missing documents
 - [x] Typecheck and tests pass twice
 - [ ] A scanned Kannada document completes against a live Sarvam Vision key

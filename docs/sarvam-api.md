@@ -1,7 +1,7 @@
 # Sarvam API reference
 
-> Verified against `docs.sarvam.ai` on 26 July 2026. These are the only three
-> endpoints v0.1 uses. Copy the shapes from here rather than guessing — a wrong
+> Verified against `docs.sarvam.ai` on 26 July 2026. These are the Sarvam
+> surfaces v0.1 uses. Copy the shapes from here rather than guessing — a wrong
 > header name costs 20 minutes of build time.
 
 Base URL: `https://api.sarvam.ai`
@@ -15,6 +15,7 @@ Two different header conventions, depending on the endpoint. This trips people u
 |---|---|
 | `/speech-to-text` | `api-subscription-key: sk_…` |
 | `/text-to-speech` | `api-subscription-key: sk_…` |
+| `/doc-digitization/job/v1/*` | `api-subscription-key: sk_…` |
 | `/v1/chat/completions` | `Authorization: Bearer sk_…` |
 
 The chat endpoint is OpenAI-shaped; the speech endpoints are Sarvam-native.
@@ -172,12 +173,30 @@ SDK note: `sarvamai@1.1.7` exposes `client.chat.completions(request)`, but its
 request declaration omits `response_format`. Virasat uses a narrow request-type
 intersection; the SDK serializes the complete object and sends the JSON schema.
 
+## Document Digitization — Iteration 2
+
+PDF and image uploads use the Document Intelligence job lifecycle under
+`https://api.sarvam.ai/doc-digitization/job/v1`:
+
+1. `POST /job/v1` creates the job.
+2. `POST /job/v1/upload-files` returns a presigned upload URL.
+3. `POST /job/v1/:job_id/start` starts parsing.
+4. `GET /job/v1/:job_id/status` is polled to a terminal state.
+5. `POST /job/v1/:job_id/download-files` returns the parsed output URL.
+
+The provider limit is 10 Document Intelligence requests per minute on every
+plan. Virasat serializes batch jobs, spaces provider API calls by 6.1 seconds,
+and retries `429` and `503` responses with bounded exponential backoff. Presigned
+object-storage upload/download requests are outside that provider queue.
+
+The product accepts at most 10 files per batch and 20 MB per file, below the
+provider's current per-job size limit. A parsing failure retains the original
+and never marks evidence as held.
+
 ## Not used in v0.1
 
 Available, deliberately skipped — see [architecture.md](architecture.md#deliberately-not-built).
 
-- **Document Intelligence** (PDF/image extraction, ≤50 MB) — would be the path
-  to reading an actual passbook or policy document. Iteration 4+.
 - **Translation / transliteration** (Mayura, Sarvam-Translate) — not needed;
   STT and TTS each handle their own language directly.
 - **Voice agent integrations** (Twilio, Exotel, LiveKit, Pipecat) — streaming
