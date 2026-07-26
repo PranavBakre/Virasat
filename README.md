@@ -94,13 +94,14 @@ checklist remain available.
 
 ## Status
 
-Iterations 0 and 1 are complete; live-key verification for both providers is
-still required.
+Iterations 0–2 are implemented; live-key verification for both voice providers
+and document digitisation is still required.
 
 | # | Iteration | Status |
 |---|---|---|
 | 0 | Web claims mockup — scripted interview + real checklist | complete |
 | 1 | Voice interview with secondary text chat | implemented |
+| 2 | Document store, Indic OCR, and estate map | implemented |
 
 ## A caution
 

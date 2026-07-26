@@ -241,14 +241,22 @@ generic list.
 | `src/openai/chat.ts` | Constrained JSON response | OpenAI Responses API |
 | `src/voice/config.ts` | Shared language and provider enums | — |
 | `src/interview/protocol.ts` | Validated multiplexed WebSocket events | — |
-| `web/serve.ts` | Session state, provider orchestration, static assets | rules + interview + Sarvam + OpenAI |
+| `src/documents/classify.ts` | Extracted evidence → known document ids. Deterministic and reviewable. | `catalog.ts` |
+| `src/documents/sarvam-vision.ts` | PDF/image digitisation through Sarvam Vision | Sarvam Document Intelligence REST API |
+| `src/documents/store.ts` | Opaque estate workspace and original-file storage | local filesystem |
+| `src/documents/estate-map.ts` | Institution groups and deduplicated outstanding documents | rules output only |
+| `web/serve.ts` | Session state, provider and document orchestration, static assets | rules + interview + Sarvam + OpenAI |
 | `web/app.js` | Voice/text interview, document controls, register render | one app WebSocket |
 | `web/index.html` | Virasat two-column demo surface | Tailwind CDN |
 
 **Dependency rule:** `src/rules/` imports nothing from `src/sarvam/`,
-`src/openai/`, or `src/interview/`. The arrow points one way. This is what keeps
-the rules engine testable without an API key, and what lets Iteration 0 ship
-before any voice-provider integration exists.
+`src/openai/`, `src/interview/`, or `src/documents/`. The arrow points one way.
+This is what keeps the rules engine testable without an API key, and what lets
+Iteration 0 ship before any provider or document integration exists.
+
+Document parsing sits on the evidence side of the same boundary. It may set a
+known `profile.documents[id]` to `yes` after a confident match. It may not add a
+requirement, route a claim, or infer entitlement from extracted prose.
 
 ## Question selection
 
