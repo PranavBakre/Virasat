@@ -12,6 +12,7 @@ import {
 import {
   closeTranscription,
   finishTranscription,
+  isTranscriptionOpen,
   openTranscriptionStream,
   sendPcm16,
   type SttSocket,
@@ -76,7 +77,13 @@ async function ensureTranscriptionStream(
   ws: Bun.ServerWebSocket<Session>,
 ): Promise<SttSocket | null> {
   if (!sarvam || !apiKey) return null;
-  if (ws.data.stt && ws.data.sttLanguage === ws.data.language) return ws.data.stt;
+  if (
+    ws.data.stt
+    && ws.data.sttLanguage === ws.data.language
+    && isTranscriptionOpen(ws.data.stt)
+  ) {
+    return ws.data.stt;
+  }
 
   // Language is fixed at connect time, so a language change needs a new socket.
   closeTranscription(ws.data.stt);
@@ -228,7 +235,12 @@ const server = Bun.serve<Session>({
     async message(ws, data) {
       if (typeof data !== "string") {
         if (!ws.data.stt || data.byteLength > 128_000) return;
-        sendPcm16(ws.data.stt, new Uint8Array(data));
+        if (!sendPcm16(ws.data.stt, new Uint8Array(data))) {
+          closeTranscription(ws.data.stt);
+          ws.data.stt = null;
+          ws.data.sttLanguage = null;
+          send(ws, { type: "error", code: "voice_dropped", message: "Voice connection dropped. Press and speak again." });
+        }
         return;
       }
 
@@ -288,7 +300,13 @@ const server = Bun.serve<Session>({
         send(ws, { type: "stt_ready" });
       } else if (message.type === "stt_stop" && ws.data.stt) {
         ws.data.stopping = true;
-        finishTranscription(ws.data.stt);
+        if (!finishTranscription(ws.data.stt)) {
+          closeTranscription(ws.data.stt);
+          ws.data.stt = null;
+          ws.data.sttLanguage = null;
+          void finishStt(ws);
+          return;
+        }
         setTimeout(() => void finishStt(ws), 350);
       }
     },

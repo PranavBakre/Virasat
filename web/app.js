@@ -59,7 +59,7 @@ function connect() {
       if (stopRequested) {
         stopRequested = false;
         send({ type: "stt_stop" });
-        document.querySelector("#mic-status").textContent = "Reading your answer…";
+        setMicStatus("Reading your answer…");
       } else {
         document.querySelector("#mic-status").textContent = "Listening… release when finished";
       }
@@ -320,12 +320,26 @@ function flushPendingPcm() {
   pendingPcm = [];
 }
 
+function setMicStatus(message) {
+  document.querySelector("#mic-status").textContent = message;
+}
+
 async function startRecording() {
   if (recording || !state.question) return;
   micPressed = true;
-  document.querySelector("#mic-status").textContent = "Starting…";
-  if (!(await warmUpAudio())) return;
-  if (!micPressed) return;
+  if (!audioReady) setMicStatus("Preparing the microphone…");
+
+  if (!(await warmUpAudio())) {
+    micPressed = false;
+    return; // warmUpAudio has already reported why.
+  }
+  if (!micPressed) {
+    // Released before the microphone finished opening — which also happens when
+    // the permission prompt steals focus. The graph stays open, so the next press
+    // is instant. Say that instead of leaving a dead "Starting…" on screen.
+    setMicStatus("Microphone ready — hold and speak.");
+    return;
+  }
   await audioContext.resume();
   pendingPcm = [];
   sttReady = false;
@@ -333,12 +347,18 @@ async function startRecording() {
   recording = true;
   send({ type: "stt_start", questionId: state.question.id });
   document.querySelector("#mic-button").textContent = "Release to send";
+  // Own this status locally. It used to be cleared only by the server's stt_ready,
+  // so any hiccup on that round trip left "Preparing the microphone…" on screen
+  // while recording was in fact already running.
+  setMicStatus("Listening… release when finished");
 }
 
 function stopRecording() {
   if (!micPressed && !recording) return;
   micPressed = false;
   document.querySelector("#mic-button").textContent = "Hold to speak";
+  // Cancelled before capture began; startRecording reports readiness once the
+  // pending warm-up resolves.
   if (!recording) return;
   recording = false;
 
@@ -346,11 +366,11 @@ function stopRecording() {
   // defer the stop until stt_ready lands and the buffer has been flushed.
   if (!sttReady) {
     stopRequested = true;
-    document.querySelector("#mic-status").textContent = "Sending…";
+    setMicStatus("Sending…");
     return;
   }
   send({ type: "stt_stop" });
-  document.querySelector("#mic-status").textContent = "Reading your answer…";
+  setMicStatus("Reading your answer…");
 }
 
 document.querySelector("#answer-form").addEventListener("submit", (event) => {
@@ -377,7 +397,11 @@ micButton.addEventListener("pointercancel", stopRecording);
 // Safety net for the cases pointer capture cannot cover: the window losing focus
 // or the tab being hidden mid-press.
 window.addEventListener("pointerup", stopRecording);
-window.addEventListener("blur", stopRecording);
+window.addEventListener("blur", () => {
+  // Only abandon an in-flight recording. A blur during warm-up is expected:
+  // the permission prompt causes it.
+  if (recording) stopRecording();
+});
 
 // Pre-open the microphone on hover, but only when permission is already granted
 // so we never surface a permission prompt on a stray mouse movement. By the time

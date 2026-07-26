@@ -42,16 +42,38 @@ export function configureStreamingSocketForBun(socket: SttSocket): void {
   socket.socket.binaryType = "arraybuffer";
 }
 
-export function sendPcm16(socket: SttSocket, bytes: Uint8Array): void {
-  socket.transcribe({
-    audio: Buffer.from(bytes).toString("base64"),
-    sample_rate: 16_000,
-    encoding: "pcm_s16le",
-  });
+// A socket held across presses can be closed by the far end while idle. The SDK
+// throws "Socket is not open." from transcribe/flush, and that throw lands inside
+// Bun's websocket message handler — so an idle-closed socket took down the whole
+// turn instead of just reopening. Report liveness and never throw from here.
+export function isTranscriptionOpen(socket: SttSocket | null): boolean {
+  return socket?.socket?.readyState === 1;
 }
 
-export function finishTranscription(socket: SttSocket): void {
-  socket.flush();
+export function sendPcm16(socket: SttSocket, bytes: Uint8Array): boolean {
+  if (!isTranscriptionOpen(socket)) return false;
+  try {
+    socket.transcribe({
+      audio: Buffer.from(bytes).toString("base64"),
+      sample_rate: 16_000,
+      encoding: "pcm_s16le",
+    });
+    return true;
+  } catch (error) {
+    console.log("Sarvam STT send failed", error);
+    return false;
+  }
+}
+
+export function finishTranscription(socket: SttSocket): boolean {
+  if (!isTranscriptionOpen(socket)) return false;
+  try {
+    socket.flush();
+    return true;
+  } catch (error) {
+    console.log("Sarvam STT flush failed", error);
+    return false;
+  }
 }
 
 export function closeTranscription(socket: SttSocket | null): void {
